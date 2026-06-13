@@ -1,6 +1,12 @@
 import { CLIENT_ID, RegenerateConfig, SCOPES } from './config';
 import { stopTwitchTracking } from './tracking';
 
+const AUTH_SUCCESS_MESSAGE = {
+  en: 'Authorization successful. You can close this window.',
+  ru: 'Авторизация прошла успешно. Можно закрыть это окно.',
+  uk: 'Авторизація успішна. Можна закрити це вікно.',
+} as const;
+
 events.On('twitchLogin', () => {
   const url = `https://id.twitch.tv/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=http://localhost:3000/addon/twitch/auth`;
   const response_type = 'token';
@@ -39,7 +45,7 @@ events.On('authCallback', ({ query }) => {
 
   return {
     redirect: ui.auth.generateSuccess(
-      'Authorization successful. You can close this window.'
+      AUTH_SUCCESS_MESSAGE[LANG.current] ?? AUTH_SUCCESS_MESSAGE.en
     ),
   };
 });
