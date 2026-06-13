@@ -26,6 +26,7 @@ addons.onRequest('getChannelId', async ({ fromAddonId }) => {
 
   return {
     channelId: user.id,
+    username: user.login,
     login: user.login,
     displayName: user.display_name,
   };
