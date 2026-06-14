@@ -1,6 +1,6 @@
 import { TwitchApi, TwitchBroadcaster } from './api';
+import { getCurrentPinnedMessageId } from './chat-monitor';
 import { EVENTSUB_WS_URL } from './constants';
-import { notifyConnectionStatus } from './status-notify';
 import {
   pushAutomaticRewardRedemption,
   pushBits,
@@ -8,11 +8,17 @@ import {
   pushChatFromEventSub,
   pushCustomRewardRedemption,
   pushFollow,
+  pushModerationEvent,
+  pushPollBegin,
+  pushPollEnd,
   pushSubGift,
   pushSubRenewal,
   pushSubscribe,
   TwitchEventUser,
 } from './dashboard-feed';
+import { buildModerationFeedEvent, buildPollFeedEvent } from './moderation';
+import { getSettings, reloadSettings } from './settings';
+import { notifyConnectionStatus } from './status-notify';
 
 type EventSubFrame = {
   metadata: {
@@ -231,6 +237,8 @@ export class TwitchEventSubClient {
           typeof event.chatter_user_login === 'string' &&
           typeof event.chatter_user_name === 'string'
         ) {
+          const messageId =
+            typeof event.message_id === 'string' ? event.message_id : undefined;
           pushChatFromEventSub({
             chatter_user_id: event.chatter_user_id,
             chatter_user_login: event.chatter_user_login,
@@ -272,6 +280,10 @@ export class TwitchEventSubClient {
               typeof event.channel_points_custom_reward_id === 'string'
                 ? event.channel_points_custom_reward_id
                 : null,
+            message_id: messageId,
+            is_pinned: Boolean(
+              messageId && messageId === getCurrentPinnedMessageId()
+            ),
           }).catch(error => console.error(error));
         }
         break;
@@ -345,6 +357,42 @@ export class TwitchEventSubClient {
             }).catch(error => console.error(error));
           }
         }
+        break;
+      case 'channel.moderate':
+        void reloadSettings().then(() => {
+          if (!getSettings().showModeratorActions) {
+            return;
+          }
+          const moderationEvent = buildModerationFeedEvent(event);
+          if (!moderationEvent) {
+            return;
+          }
+          return pushModerationEvent(moderationEvent);
+        }).catch(error => console.error(error));
+        break;
+      case 'channel.poll.begin':
+        void reloadSettings().then(() => {
+          if (!getSettings().showPolls) {
+            return;
+          }
+          const pollEvent = buildPollFeedEvent(event);
+          if (!pollEvent) {
+            return;
+          }
+          return pushPollBegin(pollEvent);
+        }).catch(error => console.error(error));
+        break;
+      case 'channel.poll.end':
+        void reloadSettings().then(() => {
+          if (!getSettings().showPolls) {
+            return;
+          }
+          const pollEvent = buildPollFeedEvent(event);
+          if (!pollEvent) {
+            return;
+          }
+          return pushPollEnd(pollEvent);
+        }).catch(error => console.error(error));
         break;
       case 'channel.channel_points_custom_reward_redemption.add':
         if (

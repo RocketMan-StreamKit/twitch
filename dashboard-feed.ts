@@ -179,6 +179,61 @@ const ANNOUNCEMENT_STYLE_HEADER = {
   uk: 'Анонс',
 } as const;
 
+const PINNED_STYLE_HEADER = {
+  en: 'Pinned',
+  ru: 'Закреплено',
+  uk: 'Закріплено',
+} as const;
+
+const PINNED_STYLE = {
+  color: '#FFB800',
+  header: PINNED_STYLE_HEADER,
+  icon: 'list' as const,
+};
+
+const MODERATION_STYLE = {
+  color: '#F44336',
+  header: {
+    en: 'Moderation',
+    ru: 'Модерация',
+    uk: 'Модерація',
+  },
+  icon: 'exclamation' as const,
+};
+
+const JOIN_LEAVE_STYLE = {
+  color: '#607D8B',
+};
+
+const POLL_STYLE = {
+  color: '#2196F3',
+  header: {
+    en: 'Poll',
+    ru: 'Опрос',
+    uk: 'Опитування',
+  },
+  icon: 'list' as const,
+};
+
+type LocalizedText = { en: string; ru?: string; uk?: string };
+
+export const twitchChatMessageId = (messageId: string) =>
+  `twitch:msg:${messageId}`;
+
+const pushSystemChat = async (
+  content: LocalizedText,
+  options?: {
+    id?: string;
+    style?: ChatMessageStyle;
+  }
+) => {
+  return dashboard.addSystemChatMessage({
+    id: options?.id,
+    content,
+    style: options?.style,
+  });
+};
+
 export const pushChatMessage = async (
   login: string,
   displayName: string,
@@ -319,6 +374,8 @@ export const pushChatFromEventSub = async (event: {
   color?: string;
   badges?: { set_id: string; id: string }[];
   channel_points_custom_reward_id?: string | null;
+  message_id?: string;
+  is_pinned?: boolean;
 }) => {
   if (event.channel_points_custom_reward_id) {
     return;
@@ -332,6 +389,9 @@ export const pushChatFromEventSub = async (event: {
   const icons = event.badges
     ? event.badges.map(b => badgeIconId(b.set_id, b.id)).sort()
     : undefined;
+  const messageId = event.message_id
+    ? twitchChatMessageId(event.message_id)
+    : undefined;
   return pushChatMessage(
     event.chatter_user_login,
     event.chatter_user_name,
@@ -339,7 +399,9 @@ export const pushChatFromEventSub = async (event: {
     event.chatter_user_id,
     event.color,
     icons,
-    emotes
+    emotes,
+    event.is_pinned ? PINNED_STYLE : undefined,
+    messageId
   );
 };
 
@@ -381,6 +443,365 @@ export const pushChatAnnouncementFromEventSub = async (event: {
       icon: 'megaphone',
     },
     event.message_id ? `twitch:announcement:${event.message_id}` : undefined
+  );
+};
+
+export const pushPinnedChatMessage = async (event: {
+  message_id: string;
+  sender_user_id: string;
+  sender_user_login: string;
+  sender_user_name: string;
+  message?: { text?: string; fragments?: unknown };
+}) => {
+  const content = event.message?.text?.trim();
+  if (!content) {
+    return;
+  }
+
+  const emotes = extractEmotesFromTwitchFragments(event.message?.fragments);
+  return pushChatMessage(
+    event.sender_user_login,
+    event.sender_user_name,
+    content,
+    event.sender_user_id,
+    undefined,
+    undefined,
+    emotes,
+    PINNED_STYLE,
+    twitchChatMessageId(event.message_id)
+  );
+};
+
+export const pushChatterJoined = async (displayName: string, login: string) => {
+  return pushSystemChat(
+    {
+      en: `${displayName} joined the chat`,
+      ru: `${displayName} вошёл(а) в чат`,
+      uk: `${displayName} увійшов(ла) до чату`,
+    },
+    {
+      id: `twitch:join:${login}:${Date.now()}`,
+      style: JOIN_LEAVE_STYLE,
+    }
+  );
+};
+
+export const pushChatterLeft = async (displayName: string, login: string) => {
+  return pushSystemChat(
+    {
+      en: `${displayName} left the chat`,
+      ru: `${displayName} вышел(а) из чата`,
+      uk: `${displayName} вийшов(ла) з чату`,
+    },
+    {
+      id: `twitch:part:${login}:${Date.now()}`,
+      style: JOIN_LEAVE_STYLE,
+    }
+  );
+};
+
+type ModerationUser = {
+  user_id: string;
+  user_login: string;
+  user_name: string;
+  reason?: string;
+  expires_at?: string;
+  message_body?: string;
+  message_id?: string;
+};
+
+const formatModeratorPrefix = (
+  moderatorName: string,
+  moderatorLogin: string
+) => `${moderatorName} (${moderatorLogin})`;
+
+const formatTargetUser = (user: ModerationUser) =>
+  `${user.user_name} (${user.user_login})`;
+
+const formatReasonSuffix = (reason?: string) => {
+  const trimmed = reason?.trim();
+  return trimmed ? `: ${trimmed}` : '';
+};
+
+export const pushModerationEvent = async (event: {
+  action: string;
+  moderator_user_name: string;
+  moderator_user_login: string;
+  user?: ModerationUser | null;
+  follow_duration_minutes?: number;
+  wait_time_seconds?: number;
+  viewer_count?: number;
+  terms?: string[];
+  list?: string;
+  automod_action?: string;
+  is_approved?: boolean;
+  moderator_message?: string;
+}) => {
+  const mod = formatModeratorPrefix(
+    event.moderator_user_name,
+    event.moderator_user_login
+  );
+  const user = event.user;
+  let content: LocalizedText;
+
+  switch (event.action) {
+    case 'ban':
+    case 'shared_chat_ban':
+      content = user
+        ? {
+            en: `${mod} banned ${formatTargetUser(user)}${formatReasonSuffix(user.reason)}`,
+            ru: `${mod} забанил(а) ${formatTargetUser(user)}${formatReasonSuffix(user.reason)}`,
+            uk: `${mod} забанив(ла) ${formatTargetUser(user)}${formatReasonSuffix(user.reason)}`,
+          }
+        : { en: `${mod} banned a user`, ru: `${mod} забанил(а) пользователя`, uk: `${mod} забанив(ла) користувача` };
+      break;
+    case 'timeout':
+    case 'shared_chat_timeout':
+      content = user
+        ? {
+            en: `${mod} timed out ${formatTargetUser(user)}${formatReasonSuffix(user.reason)}`,
+            ru: `${mod} выдал(а) таймаут ${formatTargetUser(user)}${formatReasonSuffix(user.reason)}`,
+            uk: `${mod} дав(ла) таймаут ${formatTargetUser(user)}${formatReasonSuffix(user.reason)}`,
+          }
+        : { en: `${mod} timed out a user`, ru: `${mod} выдал(а) таймаут`, uk: `${mod} дав(ла) таймаут` };
+      break;
+    case 'unban':
+    case 'shared_chat_unban':
+      content = user
+        ? {
+            en: `${mod} unbanned ${formatTargetUser(user)}`,
+            ru: `${mod} разбанил(а) ${formatTargetUser(user)}`,
+            uk: `${mod} розбанив(ла) ${formatTargetUser(user)}`,
+          }
+        : { en: `${mod} unbanned a user`, ru: `${mod} разбанил(а) пользователя`, uk: `${mod} розбанив(ла) користувача` };
+      break;
+    case 'untimeout':
+    case 'shared_chat_untimeout':
+      content = user
+        ? {
+            en: `${mod} removed timeout for ${formatTargetUser(user)}`,
+            ru: `${mod} снял(а) таймаут с ${formatTargetUser(user)}`,
+            uk: `${mod} зняв(ла) таймаут з ${formatTargetUser(user)}`,
+          }
+        : { en: `${mod} removed a timeout`, ru: `${mod} снял(а) таймаут`, uk: `${mod} зняв(ла) таймаут` };
+      break;
+    case 'delete':
+    case 'shared_chat_delete':
+      content = user
+        ? {
+            en: `${mod} deleted message from ${formatTargetUser(user)}${user.message_body ? `: «${user.message_body}»` : ''}`,
+            ru: `${mod} удалил(а) сообщение ${formatTargetUser(user)}${user.message_body ? `: «${user.message_body}»` : ''}`,
+            uk: `${mod} видалив(ла) повідомлення ${formatTargetUser(user)}${user.message_body ? `: «${user.message_body}»` : ''}`,
+          }
+        : { en: `${mod} deleted a message`, ru: `${mod} удалил(а) сообщение`, uk: `${mod} видалив(ла) повідомлення` };
+      break;
+    case 'clear':
+      content = {
+        en: `${mod} cleared the chat`,
+        ru: `${mod} очистил(а) чат`,
+        uk: `${mod} очистив(ла) чат`,
+      };
+      break;
+    case 'warn':
+      content = user
+        ? {
+            en: `${mod} warned ${formatTargetUser(user)}${formatReasonSuffix(user.reason)}`,
+            ru: `${mod} выдал(а) предупреждение ${formatTargetUser(user)}${formatReasonSuffix(user.reason)}`,
+            uk: `${mod} дав(ла) попередження ${formatTargetUser(user)}${formatReasonSuffix(user.reason)}`,
+          }
+        : { en: `${mod} issued a warning`, ru: `${mod} выдал(а) предупреждение`, uk: `${mod} дав(ла) попередження` };
+      break;
+    case 'mod':
+      content = user
+        ? {
+            en: `${mod} granted moderator to ${formatTargetUser(user)}`,
+            ru: `${mod} назначил(а) модератором ${formatTargetUser(user)}`,
+            uk: `${mod} призначив(ла) модератором ${formatTargetUser(user)}`,
+          }
+        : { en: `${mod} granted moderator`, ru: `${mod} назначил(а) модератора`, uk: `${mod} призначив(ла) модератора` };
+      break;
+    case 'unmod':
+      content = user
+        ? {
+            en: `${mod} removed moderator from ${formatTargetUser(user)}`,
+            ru: `${mod} снял(а) модератора с ${formatTargetUser(user)}`,
+            uk: `${mod} зняв(ла) модератора з ${formatTargetUser(user)}`,
+          }
+        : { en: `${mod} removed moderator`, ru: `${mod} снял(а) модератора`, uk: `${mod} зняв(ла) модератора` };
+      break;
+    case 'vip':
+      content = user
+        ? {
+            en: `${mod} granted VIP to ${formatTargetUser(user)}`,
+            ru: `${mod} выдал(а) VIP ${formatTargetUser(user)}`,
+            uk: `${mod} надав(ла) VIP ${formatTargetUser(user)}`,
+          }
+        : { en: `${mod} granted VIP`, ru: `${mod} выдал(а) VIP`, uk: `${mod} надав(ла) VIP` };
+      break;
+    case 'unvip':
+      content = user
+        ? {
+            en: `${mod} removed VIP from ${formatTargetUser(user)}`,
+            ru: `${mod} снял(а) VIP с ${formatTargetUser(user)}`,
+            uk: `${mod} зняв(ла) VIP з ${formatTargetUser(user)}`,
+          }
+        : { en: `${mod} removed VIP`, ru: `${mod} снял(а) VIP`, uk: `${mod} зняв(ла) VIP` };
+      break;
+    case 'emoteonly':
+      content = { en: `${mod} enabled emote-only mode`, ru: `${mod} включил(а) режим только эмоты`, uk: `${mod} увімкнув(ла) режим лише емоутів` };
+      break;
+    case 'emoteonlyoff':
+      content = { en: `${mod} disabled emote-only mode`, ru: `${mod} выключил(а) режим только эмоты`, uk: `${mod} вимкнув(ла) режим лише емоутів` };
+      break;
+    case 'followers':
+      content = {
+        en: `${mod} enabled followers-only mode (${event.follow_duration_minutes ?? 0} min)`,
+        ru: `${mod} включил(а) режим только для фолловеров (${event.follow_duration_minutes ?? 0} мин)`,
+        uk: `${mod} увімкнув(ла) режим лише для фолловерів (${event.follow_duration_minutes ?? 0} хв)`,
+      };
+      break;
+    case 'followersoff':
+      content = { en: `${mod} disabled followers-only mode`, ru: `${mod} выключил(а) режим только для фолловеров`, uk: `${mod} вимкнув(ла) режим лише для фолловерів` };
+      break;
+    case 'slow':
+      content = {
+        en: `${mod} enabled slow mode (${event.wait_time_seconds ?? 0}s)`,
+        ru: `${mod} включил(а) медленный режим (${event.wait_time_seconds ?? 0} сек)`,
+        uk: `${mod} увімкнув(ла) повільний режим (${event.wait_time_seconds ?? 0} сек)`,
+      };
+      break;
+    case 'slowoff':
+      content = { en: `${mod} disabled slow mode`, ru: `${mod} выключил(а) медленный режим`, uk: `${mod} вимкнув(ла) повільний режим` };
+      break;
+    case 'subscribers':
+      content = { en: `${mod} enabled subscribers-only mode`, ru: `${mod} включил(а) режим только для подписчиков`, uk: `${mod} увімкнув(ла) режим лише для підписників` };
+      break;
+    case 'subscribersoff':
+      content = { en: `${mod} disabled subscribers-only mode`, ru: `${mod} выключил(а) режим только для подписчиков`, uk: `${mod} вимкнув(ла) режим лише для підписників` };
+      break;
+    case 'uniquechat':
+      content = { en: `${mod} enabled unique chat mode`, ru: `${mod} включил(а) режим уникальных сообщений`, uk: `${mod} увімкнув(ла) режим унікальних повідомлень` };
+      break;
+    case 'uniquechatoff':
+      content = { en: `${mod} disabled unique chat mode`, ru: `${mod} выключил(а) режим уникальных сообщений`, uk: `${mod} вимкнув(ла) режим унікальних повідомлень` };
+      break;
+    case 'raid':
+      content = user
+        ? {
+            en: `${mod} started raid to ${formatTargetUser(user)}`,
+            ru: `${mod} начал(а) рейд на ${formatTargetUser(user)}`,
+            uk: `${mod} розпочав(ла) рейд на ${formatTargetUser(user)}`,
+          }
+        : { en: `${mod} started a raid`, ru: `${mod} начал(а) рейд`, uk: `${mod} розпочав(ла) рейд` };
+      break;
+    case 'unraid':
+      content = { en: `${mod} cancelled the raid`, ru: `${mod} отменил(а) рейд`, uk: `${mod} скасував(ла) рейд` };
+      break;
+    case 'approve_unban_request':
+      content = user
+        ? {
+            en: `${mod} approved unban request for ${formatTargetUser(user)}${formatReasonSuffix(event.moderator_message)}`,
+            ru: `${mod} одобрил(а) запрос на разбан ${formatTargetUser(user)}${formatReasonSuffix(event.moderator_message)}`,
+            uk: `${mod} схвалив(ла) запит на розбан ${formatTargetUser(user)}${formatReasonSuffix(event.moderator_message)}`,
+          }
+        : { en: `${mod} approved an unban request`, ru: `${mod} одобрил(а) запрос на разбан`, uk: `${mod} схвалив(ла) запит на розбан` };
+      break;
+    case 'deny_unban_request':
+      content = user
+        ? {
+            en: `${mod} denied unban request for ${formatTargetUser(user)}${formatReasonSuffix(event.moderator_message)}`,
+            ru: `${mod} отклонил(а) запрос на разбан ${formatTargetUser(user)}${formatReasonSuffix(event.moderator_message)}`,
+            uk: `${mod} відхилив(ла) запит на розбан ${formatTargetUser(user)}${formatReasonSuffix(event.moderator_message)}`,
+          }
+        : { en: `${mod} denied an unban request`, ru: `${mod} отклонил(а) запрос на разбан`, uk: `${mod} відхилив(ла) запит на розбан` };
+      break;
+    case 'add_blocked_term':
+    case 'add_permitted_term':
+    case 'remove_blocked_term':
+    case 'remove_permitted_term':
+      content = {
+        en: `${mod} updated ${event.list ?? 'chat'} terms (${event.action})`,
+        ru: `${mod} обновил(а) список слов (${event.action})`,
+        uk: `${mod} оновив(ла) список слів (${event.action})`,
+      };
+      break;
+    default:
+      content = {
+        en: `${mod}: ${event.action}`,
+        ru: `${mod}: ${event.action}`,
+        uk: `${mod}: ${event.action}`,
+      };
+      break;
+  }
+
+  return pushSystemChat(content, {
+    id: `twitch:moderation:${event.action}:${Date.now()}`,
+    style: MODERATION_STYLE,
+  });
+};
+
+export const pushPollBegin = async (event: {
+  id: string;
+  title: string;
+  choices: { id: string; title: string }[];
+}) => {
+  const options = event.choices
+    .map((choice, index) => `${index + 1}. ${choice.title}`)
+    .join('\n');
+  return pushSystemChat(
+    {
+      en: `Poll started: «${event.title}»\n${options}`,
+      ru: `Опрос создан: «${event.title}»\n${options}`,
+      uk: `Опитування створено: «${event.title}»\n${options}`,
+    },
+    {
+      id: `twitch:poll:begin:${event.id}`,
+      style: POLL_STYLE,
+    }
+  );
+};
+
+export const pushPollEnd = async (event: {
+  id: string;
+  title: string;
+  choices: {
+    id: string;
+    title: string;
+    votes?: number;
+  }[];
+  status?: string;
+}) => {
+  const totalVotes = event.choices.reduce(
+    (sum, choice) => sum + (choice.votes ?? 0),
+    0
+  );
+  const lines = event.choices.map(choice => {
+    const votes = choice.votes ?? 0;
+    const percent =
+      totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
+    return `• ${choice.title} — ${percent}% (${votes})`;
+  });
+  const winner = [...event.choices].sort(
+    (a, b) => (b.votes ?? 0) - (a.votes ?? 0)
+  )[0];
+  const winnerSuffix = winner
+    ? {
+        en: `\nWinner: ${winner.title} (${winner.votes ?? 0})`,
+        ru: `\nПобедитель: ${winner.title} (${winner.votes ?? 0})`,
+        uk: `\nПереможець: ${winner.title} (${winner.votes ?? 0})`,
+      }
+    : { en: '', ru: '', uk: '' };
+
+  return pushSystemChat(
+    {
+      en: `Poll ended: «${event.title}»\n${lines.join('\n')}${winnerSuffix.en}`,
+      ru: `Опрос завершён: «${event.title}»\n${lines.join('\n')}${winnerSuffix.ru}`,
+      uk: `Опитування завершено: «${event.title}»\n${lines.join('\n')}${winnerSuffix.uk}`,
+    },
+    {
+      id: `twitch:poll:end:${event.id}`,
+      style: POLL_STYLE,
+    }
   );
 };
 

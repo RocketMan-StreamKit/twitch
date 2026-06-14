@@ -70,4 +70,25 @@ export const EVENTSUB_TYPES = [
       broadcaster_user_id: broadcasterId,
     }),
   },
+  {
+    type: 'channel.moderate',
+    version: '2',
+    condition: (broadcasterId: string) => ({
+      broadcaster_user_id: broadcasterId,
+    }),
+  },
+  {
+    type: 'channel.poll.begin',
+    version: '1',
+    condition: (broadcasterId: string) => ({
+      broadcaster_user_id: broadcasterId,
+    }),
+  },
+  {
+    type: 'channel.poll.end',
+    version: '1',
+    condition: (broadcasterId: string) => ({
+      broadcaster_user_id: broadcasterId,
+    }),
+  },
 ] as const;

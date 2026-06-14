@@ -1,6 +1,8 @@
 import { TwitchApi } from './api';
+import { startChatMonitor, stopChatMonitor } from './chat-monitor';
 import { PLATFORM } from './constants';
 import { TwitchEventSubClient } from './eventsub';
+import { reloadSettings } from './settings';
 import { notifyConnectionStatus } from './status-notify';
 
 let eventSub: TwitchEventSubClient | null = null;
@@ -31,6 +33,7 @@ export const startTwitchTracking = async () => {
     }
 
     broadcasterId = user.id;
+    await reloadSettings();
     await refreshChatBadges(user.id);
     await refreshChatEmotes(user.id);
     if (!badgesRefreshTimer) {
@@ -55,6 +58,7 @@ export const startTwitchTracking = async () => {
 
     eventSub = new TwitchEventSubClient(user);
     await eventSub.start();
+    await startChatMonitor(user.id);
 
     void dashboard.onChatSend(async ({ text }) => {
       if (!TwitchApi.accessToken || !broadcasterId) {
@@ -81,6 +85,7 @@ export const startTwitchTracking = async () => {
 
 export const stopTwitchTracking = (options?: { notify?: boolean }) => {
   void dashboard.offChatSend();
+  stopChatMonitor();
   eventSub?.stop();
   eventSub = null;
   broadcasterId = null;

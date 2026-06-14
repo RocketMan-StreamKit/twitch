@@ -21,6 +21,16 @@ export const SCOPES = [
   'channel:manage:redemptions',
   'bits:read',
   'moderator:read:followers',
+  'moderator:read:chat_messages',
+  'moderator:read:chatters',
+  'moderator:read:banned_users',
+  'moderator:read:chat_settings',
+  'moderator:read:blocked_terms',
+  'moderator:read:unban_requests',
+  'moderator:read:warnings',
+  'moderator:read:moderators',
+  'moderator:read:vips',
+  'channel:read:polls',
 ];
 
 /**
@@ -44,7 +54,47 @@ const formatLogoutLabel = (login: string) => ({
 const buildConfigFields = (
   access_token: string,
   login?: string
-): AddonConfigSchema => [
+): AddonConfigSchema => {
+  const chatSettings: AddonConfigSchema = [
+    {
+      key: 'show_moderator_actions',
+      type: 'boolean',
+      default: true,
+      editor: {
+        label: {
+          en: 'Show moderator actions',
+          ru: 'Отображать действия модератора',
+          uk: 'Відображати дії модератора',
+        },
+      },
+    },
+    {
+      key: 'show_join_leave',
+      type: 'boolean',
+      default: false,
+      editor: {
+        label: {
+          en: 'Show join/leave events',
+          ru: 'Отображать вход/выход из чата',
+          uk: 'Відображати вхід/вихід з чату',
+        },
+      },
+    },
+    {
+      key: 'show_polls',
+      type: 'boolean',
+      default: true,
+      editor: {
+        label: {
+          en: 'Show polls',
+          ru: 'Отображать опросы',
+          uk: 'Відображати опитування',
+        },
+      },
+    },
+  ];
+
+  return [
   {
     key: 'access_token',
     type: 'text',
@@ -55,6 +105,7 @@ const buildConfigFields = (
     type: 'number',
     default: 0,
   },
+  ...(access_token ? chatSettings : []),
   access_token
     ? {
         type: 'button',
@@ -79,6 +130,7 @@ const buildConfigFields = (
         },
       },
 ];
+};
 
 export const RegenerateConfig = () => {
   void api.config.getParams().then(async params => {

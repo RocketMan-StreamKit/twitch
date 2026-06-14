@@ -40,6 +40,20 @@ export type TwitchCustomReward = {
   is_enabled: boolean;
 };
 
+export type TwitchPinnedChatMessage = {
+  message_id: string;
+  sender_user_id: string;
+  sender_user_login: string;
+  sender_user_name: string;
+  message?: { text?: string; fragments?: unknown };
+};
+
+export type TwitchChatter = {
+  user_id: string;
+  user_login: string;
+  user_name: string;
+};
+
 export const TwitchApi = new (class {
   accessToken: string | null = null;
 
@@ -494,6 +508,85 @@ export const TwitchApi = new (class {
           : 'Failed to create Twitch reward';
       console.error('Failed to create Twitch custom reward:', message);
       return { success: false, message };
+    }
+  }
+
+  async GetPinnedChatMessage(
+    broadcasterId: string
+  ): Promise<TwitchPinnedChatMessage | null> {
+    const accessToken = this.accessToken;
+    if (!accessToken || !broadcasterId) {
+      return null;
+    }
+
+    try {
+      const query = new URLSearchParams({
+        broadcaster_id: broadcasterId,
+        moderator_id: broadcasterId,
+      });
+      const response = await network.request.get(
+        `https://api.twitch.tv/helix/chat/pins?${query}`,
+        this.authHeaders()
+      );
+      const parsed = this.parseHelixBody<{ data?: TwitchPinnedChatMessage[] }>(
+        response,
+        'Failed to fetch pinned chat message'
+      );
+      if (!parsed.ok) {
+        return null;
+      }
+      return parsed.body.data?.[0] ?? null;
+    } catch (error) {
+      console.error('Failed to fetch pinned chat message:', error);
+      return null;
+    }
+  }
+
+  async GetChatters(broadcasterId: string): Promise<TwitchChatter[]> {
+    const accessToken = this.accessToken;
+    if (!accessToken || !broadcasterId) {
+      return [];
+    }
+
+    const chatters: TwitchChatter[] = [];
+    let cursor: string | undefined;
+
+    try {
+      do {
+        const query = new URLSearchParams({
+          broadcaster_id: broadcasterId,
+          moderator_id: broadcasterId,
+        });
+        if (cursor) {
+          query.set('after', cursor);
+        }
+
+        const response = await network.request.get(
+          `https://api.twitch.tv/helix/chat/chatters?${query}`,
+          this.authHeaders()
+        );
+        const parsed = this.parseHelixBody<{
+          data?: TwitchChatter[];
+          pagination?: { cursor?: string };
+        }>(response, 'Failed to fetch chatters');
+
+        if (!parsed.ok) {
+          console.warn(parsed.message);
+          return chatters;
+        }
+
+        for (const item of parsed.body.data ?? []) {
+          if (item?.user_id && item?.user_login && item?.user_name) {
+            chatters.push(item);
+          }
+        }
+        cursor = parsed.body.pagination?.cursor;
+      } while (cursor);
+
+      return chatters;
+    } catch (error) {
+      console.error('Failed to fetch chatters:', error);
+      return chatters;
     }
   }
 
