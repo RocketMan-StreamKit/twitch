@@ -159,6 +159,26 @@ export const pushSubRenewal = async (
   );
 };
 
+type ChatMessageStyle = {
+  color: string;
+  header?: { en: string; ru?: string; uk?: string };
+  icon?: 'exclamation' | 'question' | 'megaphone' | 'list';
+};
+
+const TWITCH_ANNOUNCEMENT_COLORS: Record<string, string> = {
+  primary: '#9147FF',
+  purple: '#9147FF',
+  blue: '#0094FF',
+  green: '#00AD03',
+  orange: '#FF6905',
+};
+
+const ANNOUNCEMENT_STYLE_HEADER = {
+  en: 'Announcement',
+  ru: 'Анонс',
+  uk: 'Анонс',
+} as const;
+
 export const pushChatMessage = async (
   login: string,
   displayName: string,
@@ -166,7 +186,9 @@ export const pushChatMessage = async (
   twitchUserId?: string,
   color?: string,
   icons?: string[],
-  emotes?: { word: string; url: string }[]
+  emotes?: { word: string; url: string }[],
+  style?: ChatMessageStyle,
+  messageId?: string
 ) => {
   const id = twitchUserId ? userId(twitchUserId) : `twitch:login:${login}`;
   const avatar = twitchUserId ? await resolveUserAvatar(twitchUserId) : '';
@@ -180,10 +202,12 @@ export const pushChatMessage = async (
   };
   return dashboard.addChatMessage(
     {
+      id: messageId,
       content,
       platform: PLATFORM,
       from: profile.id,
       emotes: emotes?.length ? emotes : undefined,
+      style,
     },
     profile
   );
@@ -316,6 +340,47 @@ export const pushChatFromEventSub = async (event: {
     event.color,
     icons,
     emotes
+  );
+};
+
+export const pushChatAnnouncementFromEventSub = async (event: {
+  chatter_user_id: string;
+  chatter_user_login: string;
+  chatter_user_name: string;
+  message?: { text?: string; fragments?: unknown };
+  color?: string;
+  badges?: { set_id: string; id: string }[];
+  message_id?: string;
+  announcement_color?: string;
+}) => {
+  const content = event.message?.text?.trim();
+  if (!content) {
+    return;
+  }
+
+  const emotes = extractEmotesFromTwitchFragments(event.message?.fragments);
+  const icons = event.badges
+    ? event.badges.map(b => badgeIconId(b.set_id, b.id)).sort()
+    : undefined;
+  const announcementColor = event.announcement_color?.trim().toLowerCase();
+  const styleColor =
+    (announcementColor && TWITCH_ANNOUNCEMENT_COLORS[announcementColor]) ||
+    TWITCH_ANNOUNCEMENT_COLORS.primary;
+
+  return pushChatMessage(
+    event.chatter_user_login,
+    event.chatter_user_name,
+    content,
+    event.chatter_user_id,
+    event.color,
+    icons,
+    emotes,
+    {
+      color: styleColor,
+      header: ANNOUNCEMENT_STYLE_HEADER,
+      icon: 'megaphone',
+    },
+    event.message_id ? `twitch:announcement:${event.message_id}` : undefined
   );
 };
 

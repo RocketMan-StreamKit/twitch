@@ -13,6 +13,14 @@ export const EVENTSUB_TYPES = [
     }),
   },
   {
+    type: 'channel.chat.notification',
+    version: '1',
+    condition: (broadcasterId: string) => ({
+      broadcaster_user_id: broadcasterId,
+      user_id: broadcasterId,
+    }),
+  },
+  {
     type: 'channel.cheer',
     version: '1',
     condition: (broadcasterId: string) => ({

@@ -4,6 +4,7 @@ import { notifyConnectionStatus } from './status-notify';
 import {
   pushAutomaticRewardRedemption,
   pushBits,
+  pushChatAnnouncementFromEventSub,
   pushChatFromEventSub,
   pushCustomRewardRedemption,
   pushFollow,
@@ -272,6 +273,77 @@ export class TwitchEventSubClient {
                 ? event.channel_points_custom_reward_id
                 : null,
           }).catch(error => console.error(error));
+        }
+        break;
+      case 'channel.chat.notification':
+        if (
+          typeof event.chatter_user_id === 'string' &&
+          typeof event.chatter_user_login === 'string' &&
+          typeof event.chatter_user_name === 'string'
+        ) {
+          const noticeType = event.notice_type;
+          if (
+            noticeType === 'announcement' ||
+            noticeType === 'shared_chat_announcement'
+          ) {
+            const announcementPayload =
+              noticeType === 'shared_chat_announcement'
+                ? event.shared_chat_announcement
+                : event.announcement;
+            const announcementColor =
+              announcementPayload &&
+              typeof announcementPayload === 'object' &&
+              typeof (announcementPayload as { color?: string }).color ===
+                'string'
+                ? (announcementPayload as { color: string }).color
+                : 'primary';
+
+            pushChatAnnouncementFromEventSub({
+              chatter_user_id: event.chatter_user_id,
+              chatter_user_login: event.chatter_user_login,
+              chatter_user_name: event.chatter_user_name,
+              message:
+                event.message && typeof event.message === 'object'
+                  ? {
+                      text:
+                        typeof (event.message as any).text === 'string'
+                          ? (event.message as any).text
+                          : undefined,
+                      fragments: Array.isArray(
+                        (event.message as any).fragments
+                      )
+                        ? (event.message as any).fragments
+                        : undefined,
+                    }
+                  : undefined,
+              color: typeof event.color === 'string' ? event.color : undefined,
+              badges: Array.isArray(event.badges)
+                ? (event.badges as unknown[])
+                    .filter(b => {
+                      if (!b || typeof b !== 'object') {
+                        return false;
+                      }
+                      const badge = b as {
+                        set_id?: unknown;
+                        id?: unknown;
+                      };
+                      return (
+                        typeof badge.set_id === 'string' &&
+                        typeof badge.id === 'string'
+                      );
+                    })
+                    .map(b => {
+                      const badge = b as { set_id: string; id: string };
+                      return { set_id: badge.set_id, id: badge.id };
+                    })
+                : undefined,
+              message_id:
+                typeof event.message_id === 'string'
+                  ? event.message_id
+                  : undefined,
+              announcement_color: announcementColor,
+            }).catch(error => console.error(error));
+          }
         }
         break;
       case 'channel.channel_points_custom_reward_redemption.add':
