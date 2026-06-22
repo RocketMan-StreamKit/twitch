@@ -3,18 +3,29 @@ import {
   pushChatterJoined,
   pushChatterLeft,
   pushPinnedChatMessage,
+  repushChatMessageWithoutPin,
 } from './dashboard-feed';
 import { getSettings, reloadSettings } from './settings';
 
 const CHATTERS_POLL_INTERVAL_MS = 30_000;
-const PINNED_POLL_INTERVAL_MS = 15_000;
+const PINNED_POLL_INTERVAL_MS = 3_000;
+
+type PinnedMessageSnapshot = {
+  message_id: string;
+  sender_user_id: string;
+  sender_user_login: string;
+  sender_user_name: string;
+  message?: { text?: string; fragments?: unknown };
+};
 
 let chattersTimer: ReturnType<typeof setInterval> | null = null;
 let pinnedTimer: ReturnType<typeof setInterval> | null = null;
 let knownChatters = new Map<string, { login: string; name: string }>();
 let chattersInitialized = false;
 let lastPinnedMessageId: string | null = null;
+let lastPinnedMessage: PinnedMessageSnapshot | null = null;
 let currentBroadcasterId: string | null = null;
+let pinRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const getCurrentPinnedMessageId = () => lastPinnedMessageId;
 
@@ -24,6 +35,7 @@ export const startChatMonitor = async (broadcasterId: string) => {
   knownChatters = new Map();
   chattersInitialized = false;
   lastPinnedMessageId = null;
+  lastPinnedMessage = null;
 
   await reloadSettings();
   await pollPinnedMessage();
@@ -47,11 +59,37 @@ export const stopChatMonitor = () => {
     clearInterval(pinnedTimer);
     pinnedTimer = null;
   }
+  if (pinRefreshTimer) {
+    clearTimeout(pinRefreshTimer);
+    pinRefreshTimer = null;
+  }
   currentBroadcasterId = null;
   knownChatters = new Map();
   chattersInitialized = false;
   lastPinnedMessageId = null;
+  lastPinnedMessage = null;
 };
+
+/**
+ * Schedules a near-term pinned-message check after chat activity.
+ * @example schedulePinnedMessageRefresh();
+ */
+export const schedulePinnedMessageRefresh = () => {
+  if (!currentBroadcasterId || pinRefreshTimer) {
+    return;
+  }
+
+  pinRefreshTimer = setTimeout(() => {
+    pinRefreshTimer = null;
+    void pollPinnedMessage();
+  }, 500);
+};
+
+/**
+ * Immediately checks the broadcaster's pinned chat message via Helix API.
+ * @example await refreshPinnedMessage();
+ */
+export const refreshPinnedMessage = () => pollPinnedMessage();
 
 const pollPinnedMessage = async () => {
   if (!currentBroadcasterId || !TwitchApi.accessToken) {
@@ -66,19 +104,41 @@ const pollPinnedMessage = async () => {
     return;
   }
 
+  const previousPinned = lastPinnedMessage;
   lastPinnedMessageId = messageId;
+  lastPinnedMessage =
+    messageId && pinned
+      ? {
+          message_id: messageId,
+          sender_user_id: pinned.sender_user_id,
+          sender_user_login: pinned.sender_user_login,
+          sender_user_name: pinned.sender_user_name,
+          message: pinned.message,
+        }
+      : null;
 
-  if (!messageId || !pinned) {
+  if (messageId && pinned) {
+    if (previousPinned && previousPinned.message_id !== messageId) {
+      await repushChatMessageWithoutPin(previousPinned).catch(error =>
+        console.error(error)
+      );
+    }
+
+    await pushPinnedChatMessage({
+      message_id: messageId,
+      sender_user_id: pinned.sender_user_id,
+      sender_user_login: pinned.sender_user_login,
+      sender_user_name: pinned.sender_user_name,
+      message: pinned.message,
+    }).catch(error => console.error(error));
     return;
   }
 
-  await pushPinnedChatMessage({
-    message_id: messageId,
-    sender_user_id: pinned.sender_user_id,
-    sender_user_login: pinned.sender_user_login,
-    sender_user_name: pinned.sender_user_name,
-    message: pinned.message,
-  }).catch(error => console.error(error));
+  if (previousPinned) {
+    await repushChatMessageWithoutPin(previousPinned).catch(error =>
+      console.error(error)
+    );
+  }
 };
 
 const pollChatters = async () => {

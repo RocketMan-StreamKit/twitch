@@ -1,5 +1,8 @@
 import { TwitchApi, TwitchBroadcaster } from './api';
-import { getCurrentPinnedMessageId } from './chat-monitor';
+import {
+  getCurrentPinnedMessageId,
+  schedulePinnedMessageRefresh,
+} from './chat-monitor';
 import { EVENTSUB_WS_URL } from './constants';
 import {
   pushAutomaticRewardRedemption,
@@ -23,6 +26,7 @@ import { notifyConnectionStatus } from './status-notify';
 type EventSubFrame = {
   metadata: {
     message_type: string;
+    message_id?: string;
     subscription_type?: string;
   };
   payload: {
@@ -38,6 +42,8 @@ type EventSubFrame = {
 
 type WsConnection = Awaited<ReturnType<(typeof network.websocket)['connect']>>;
 
+const MAX_SEEN_EVENTSUB_MESSAGE_IDS = 500;
+
 export class TwitchEventSubClient {
   private connection: WsConnection | null = null;
   private keepaliveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -45,6 +51,8 @@ export class TwitchEventSubClient {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private pendingReconnectUrl: string | null = null;
   private oldConnection: WsConnection | null = null;
+  private seenMessageIds = new Set<string>();
+  private endedPollIds = new Set<string>();
 
   constructor(private broadcaster: TwitchBroadcaster) {}
 
@@ -166,7 +174,36 @@ export class TwitchEventSubClient {
     }
   }
 
+  private rememberEventSubMessage(messageId: string) {
+    this.seenMessageIds.add(messageId);
+    if (this.seenMessageIds.size > MAX_SEEN_EVENTSUB_MESSAGE_IDS) {
+      const drop = this.seenMessageIds.size - MAX_SEEN_EVENTSUB_MESSAGE_IDS;
+      for (const id of this.seenMessageIds) {
+        this.seenMessageIds.delete(id);
+        if (--drop <= 0) {
+          break;
+        }
+      }
+    }
+  }
+
+  private shouldSkipDuplicateNotification(frame: EventSubFrame) {
+    const messageId = frame.metadata.message_id?.trim();
+    if (!messageId) {
+      return false;
+    }
+    if (this.seenMessageIds.has(messageId)) {
+      return true;
+    }
+    this.rememberEventSubMessage(messageId);
+    return false;
+  }
+
   private handleNotification(frame: EventSubFrame) {
+    if (this.shouldSkipDuplicateNotification(frame)) {
+      return;
+    }
+
     const subType =
       frame.metadata.subscription_type || frame.payload.subscription?.type;
     const event = frame.payload.event;
@@ -285,6 +322,7 @@ export class TwitchEventSubClient {
               messageId && messageId === getCurrentPinnedMessageId()
             ),
           }).catch(error => console.error(error));
+          schedulePinnedMessageRefresh();
         }
         break;
       case 'channel.chat.notification':
@@ -321,9 +359,7 @@ export class TwitchEventSubClient {
                         typeof (event.message as any).text === 'string'
                           ? (event.message as any).text
                           : undefined,
-                      fragments: Array.isArray(
-                        (event.message as any).fragments
-                      )
+                      fragments: Array.isArray((event.message as any).fragments)
                         ? (event.message as any).fragments
                         : undefined,
                     }
@@ -359,41 +395,49 @@ export class TwitchEventSubClient {
         }
         break;
       case 'channel.moderate':
-        void reloadSettings().then(() => {
-          if (!getSettings().showModeratorActions) {
-            return;
-          }
-          const moderationEvent = buildModerationFeedEvent(event);
-          if (!moderationEvent) {
-            return;
-          }
-          return pushModerationEvent(moderationEvent);
-        }).catch(error => console.error(error));
+        void reloadSettings()
+          .then(() => {
+            if (!getSettings().showModeratorActions) {
+              return;
+            }
+            const moderationEvent = buildModerationFeedEvent(event);
+            if (!moderationEvent) {
+              return;
+            }
+            return pushModerationEvent(moderationEvent);
+          })
+          .catch(error => console.error(error));
         break;
       case 'channel.poll.begin':
-        void reloadSettings().then(() => {
-          if (!getSettings().showPolls) {
-            return;
-          }
-          const pollEvent = buildPollFeedEvent(event);
-          if (!pollEvent) {
-            return;
-          }
-          return pushPollBegin(pollEvent);
-        }).catch(error => console.error(error));
+        void reloadSettings()
+          .then(() => {
+            if (!getSettings().showPolls) {
+              return;
+            }
+            const pollEvent = buildPollFeedEvent(event);
+            if (!pollEvent) {
+              return;
+            }
+            return pushPollBegin(pollEvent);
+          })
+          .catch(error => console.error(error));
         break;
-      case 'channel.poll.end':
-        void reloadSettings().then(() => {
-          if (!getSettings().showPolls) {
-            return;
-          }
-          const pollEvent = buildPollFeedEvent(event);
-          if (!pollEvent) {
-            return;
-          }
-          return pushPollEnd(pollEvent);
-        }).catch(error => console.error(error));
+      case 'channel.poll.end': {
+        const pollEvent = buildPollFeedEvent(event);
+        if (!pollEvent || this.endedPollIds.has(pollEvent.id)) {
+          break;
+        }
+        this.endedPollIds.add(pollEvent.id);
+        void reloadSettings()
+          .then(() => {
+            if (!getSettings().showPolls) {
+              return;
+            }
+            return pushPollEnd(pollEvent);
+          })
+          .catch(error => console.error(error));
         break;
+      }
       case 'channel.channel_points_custom_reward_redemption.add':
         if (
           isEventUser(event) &&

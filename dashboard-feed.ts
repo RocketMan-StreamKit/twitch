@@ -471,6 +471,36 @@ export const pushPinnedChatMessage = async (event: {
   );
 };
 
+/**
+ * Re-sends a chat message without the pinned frame so the chat UI re-renders it.
+ * @example await repushChatMessageWithoutPin({ message_id: 'abc', sender_user_id: '1', ... });
+ */
+export const repushChatMessageWithoutPin = async (event: {
+  message_id: string;
+  sender_user_id: string;
+  sender_user_login: string;
+  sender_user_name: string;
+  message?: { text?: string; fragments?: unknown };
+}) => {
+  const content = event.message?.text?.trim();
+  if (!content) {
+    return;
+  }
+
+  const emotes = extractEmotesFromTwitchFragments(event.message?.fragments);
+  return pushChatMessage(
+    event.sender_user_login,
+    event.sender_user_name,
+    content,
+    event.sender_user_id,
+    undefined,
+    undefined,
+    emotes,
+    undefined,
+    twitchChatMessageId(event.message_id)
+  );
+};
+
 export const pushChatterJoined = async (displayName: string, login: string) => {
   return pushSystemChat(
     {
