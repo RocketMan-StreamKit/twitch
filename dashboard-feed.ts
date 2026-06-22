@@ -330,7 +330,7 @@ const extractEmotesFromTwitchFragments = (
   }
 
   // Dedupe by exact token (case-sensitive).
-  const map = new Map<string, string>();
+  const map: Record<string, string> = {};
 
   for (const fragment of fragments) {
     if (!fragment || typeof fragment !== 'object') {
@@ -359,11 +359,10 @@ const extractEmotesFromTwitchFragments = (
       continue;
     }
 
-    map.set(word, url);
+    map[word] = url;
   }
 
-  const entries = [...map.entries()].map(([word, url]) => ({ word, url }));
-  return entries.length ? entries : undefined;
+  return Object.entries(map).map(([word, url]) => ({ word, url }));
 };
 
 export const pushChatFromEventSub = async (event: {
@@ -510,10 +509,8 @@ type ModerationUser = {
   message_id?: string;
 };
 
-const formatModeratorPrefix = (
-  moderatorName: string,
-  moderatorLogin: string
-) => `${moderatorName} (${moderatorLogin})`;
+const formatModeratorPrefix = (moderatorName: string, moderatorLogin: string) =>
+  `${moderatorName} (${moderatorLogin})`;
 
 const formatTargetUser = (user: ModerationUser) =>
   `${user.user_name} (${user.user_login})`;
@@ -553,7 +550,11 @@ export const pushModerationEvent = async (event: {
             ru: `${mod} забанил(а) ${formatTargetUser(user)}${formatReasonSuffix(user.reason)}`,
             uk: `${mod} забанив(ла) ${formatTargetUser(user)}${formatReasonSuffix(user.reason)}`,
           }
-        : { en: `${mod} banned a user`, ru: `${mod} забанил(а) пользователя`, uk: `${mod} забанив(ла) користувача` };
+        : {
+            en: `${mod} banned a user`,
+            ru: `${mod} забанил(а) пользователя`,
+            uk: `${mod} забанив(ла) користувача`,
+          };
       break;
     case 'timeout':
     case 'shared_chat_timeout':
@@ -563,7 +564,11 @@ export const pushModerationEvent = async (event: {
             ru: `${mod} выдал(а) таймаут ${formatTargetUser(user)}${formatReasonSuffix(user.reason)}`,
             uk: `${mod} дав(ла) таймаут ${formatTargetUser(user)}${formatReasonSuffix(user.reason)}`,
           }
-        : { en: `${mod} timed out a user`, ru: `${mod} выдал(а) таймаут`, uk: `${mod} дав(ла) таймаут` };
+        : {
+            en: `${mod} timed out a user`,
+            ru: `${mod} выдал(а) таймаут`,
+            uk: `${mod} дав(ла) таймаут`,
+          };
       break;
     case 'unban':
     case 'shared_chat_unban':
@@ -573,7 +578,11 @@ export const pushModerationEvent = async (event: {
             ru: `${mod} разбанил(а) ${formatTargetUser(user)}`,
             uk: `${mod} розбанив(ла) ${formatTargetUser(user)}`,
           }
-        : { en: `${mod} unbanned a user`, ru: `${mod} разбанил(а) пользователя`, uk: `${mod} розбанив(ла) користувача` };
+        : {
+            en: `${mod} unbanned a user`,
+            ru: `${mod} разбанил(а) пользователя`,
+            uk: `${mod} розбанив(ла) користувача`,
+          };
       break;
     case 'untimeout':
     case 'shared_chat_untimeout':
@@ -583,7 +592,11 @@ export const pushModerationEvent = async (event: {
             ru: `${mod} снял(а) таймаут с ${formatTargetUser(user)}`,
             uk: `${mod} зняв(ла) таймаут з ${formatTargetUser(user)}`,
           }
-        : { en: `${mod} removed a timeout`, ru: `${mod} снял(а) таймаут`, uk: `${mod} зняв(ла) таймаут` };
+        : {
+            en: `${mod} removed a timeout`,
+            ru: `${mod} снял(а) таймаут`,
+            uk: `${mod} зняв(ла) таймаут`,
+          };
       break;
     case 'delete':
     case 'shared_chat_delete':
@@ -593,7 +606,11 @@ export const pushModerationEvent = async (event: {
             ru: `${mod} удалил(а) сообщение ${formatTargetUser(user)}${user.message_body ? `: «${user.message_body}»` : ''}`,
             uk: `${mod} видалив(ла) повідомлення ${formatTargetUser(user)}${user.message_body ? `: «${user.message_body}»` : ''}`,
           }
-        : { en: `${mod} deleted a message`, ru: `${mod} удалил(а) сообщение`, uk: `${mod} видалив(ла) повідомлення` };
+        : {
+            en: `${mod} deleted a message`,
+            ru: `${mod} удалил(а) сообщение`,
+            uk: `${mod} видалив(ла) повідомлення`,
+          };
       break;
     case 'clear':
       content = {
@@ -609,7 +626,11 @@ export const pushModerationEvent = async (event: {
             ru: `${mod} выдал(а) предупреждение ${formatTargetUser(user)}${formatReasonSuffix(user.reason)}`,
             uk: `${mod} дав(ла) попередження ${formatTargetUser(user)}${formatReasonSuffix(user.reason)}`,
           }
-        : { en: `${mod} issued a warning`, ru: `${mod} выдал(а) предупреждение`, uk: `${mod} дав(ла) попередження` };
+        : {
+            en: `${mod} issued a warning`,
+            ru: `${mod} выдал(а) предупреждение`,
+            uk: `${mod} дав(ла) попередження`,
+          };
       break;
     case 'mod':
       content = user
@@ -618,7 +639,11 @@ export const pushModerationEvent = async (event: {
             ru: `${mod} назначил(а) модератором ${formatTargetUser(user)}`,
             uk: `${mod} призначив(ла) модератором ${formatTargetUser(user)}`,
           }
-        : { en: `${mod} granted moderator`, ru: `${mod} назначил(а) модератора`, uk: `${mod} призначив(ла) модератора` };
+        : {
+            en: `${mod} granted moderator`,
+            ru: `${mod} назначил(а) модератора`,
+            uk: `${mod} призначив(ла) модератора`,
+          };
       break;
     case 'unmod':
       content = user
@@ -627,7 +652,11 @@ export const pushModerationEvent = async (event: {
             ru: `${mod} снял(а) модератора с ${formatTargetUser(user)}`,
             uk: `${mod} зняв(ла) модератора з ${formatTargetUser(user)}`,
           }
-        : { en: `${mod} removed moderator`, ru: `${mod} снял(а) модератора`, uk: `${mod} зняв(ла) модератора` };
+        : {
+            en: `${mod} removed moderator`,
+            ru: `${mod} снял(а) модератора`,
+            uk: `${mod} зняв(ла) модератора`,
+          };
       break;
     case 'vip':
       content = user
@@ -636,7 +665,11 @@ export const pushModerationEvent = async (event: {
             ru: `${mod} выдал(а) VIP ${formatTargetUser(user)}`,
             uk: `${mod} надав(ла) VIP ${formatTargetUser(user)}`,
           }
-        : { en: `${mod} granted VIP`, ru: `${mod} выдал(а) VIP`, uk: `${mod} надав(ла) VIP` };
+        : {
+            en: `${mod} granted VIP`,
+            ru: `${mod} выдал(а) VIP`,
+            uk: `${mod} надав(ла) VIP`,
+          };
       break;
     case 'unvip':
       content = user
@@ -645,13 +678,25 @@ export const pushModerationEvent = async (event: {
             ru: `${mod} снял(а) VIP с ${formatTargetUser(user)}`,
             uk: `${mod} зняв(ла) VIP з ${formatTargetUser(user)}`,
           }
-        : { en: `${mod} removed VIP`, ru: `${mod} снял(а) VIP`, uk: `${mod} зняв(ла) VIP` };
+        : {
+            en: `${mod} removed VIP`,
+            ru: `${mod} снял(а) VIP`,
+            uk: `${mod} зняв(ла) VIP`,
+          };
       break;
     case 'emoteonly':
-      content = { en: `${mod} enabled emote-only mode`, ru: `${mod} включил(а) режим только эмоты`, uk: `${mod} увімкнув(ла) режим лише емоутів` };
+      content = {
+        en: `${mod} enabled emote-only mode`,
+        ru: `${mod} включил(а) режим только эмоты`,
+        uk: `${mod} увімкнув(ла) режим лише емоутів`,
+      };
       break;
     case 'emoteonlyoff':
-      content = { en: `${mod} disabled emote-only mode`, ru: `${mod} выключил(а) режим только эмоты`, uk: `${mod} вимкнув(ла) режим лише емоутів` };
+      content = {
+        en: `${mod} disabled emote-only mode`,
+        ru: `${mod} выключил(а) режим только эмоты`,
+        uk: `${mod} вимкнув(ла) режим лише емоутів`,
+      };
       break;
     case 'followers':
       content = {
@@ -661,7 +706,11 @@ export const pushModerationEvent = async (event: {
       };
       break;
     case 'followersoff':
-      content = { en: `${mod} disabled followers-only mode`, ru: `${mod} выключил(а) режим только для фолловеров`, uk: `${mod} вимкнув(ла) режим лише для фолловерів` };
+      content = {
+        en: `${mod} disabled followers-only mode`,
+        ru: `${mod} выключил(а) режим только для фолловеров`,
+        uk: `${mod} вимкнув(ла) режим лише для фолловерів`,
+      };
       break;
     case 'slow':
       content = {
@@ -671,19 +720,39 @@ export const pushModerationEvent = async (event: {
       };
       break;
     case 'slowoff':
-      content = { en: `${mod} disabled slow mode`, ru: `${mod} выключил(а) медленный режим`, uk: `${mod} вимкнув(ла) повільний режим` };
+      content = {
+        en: `${mod} disabled slow mode`,
+        ru: `${mod} выключил(а) медленный режим`,
+        uk: `${mod} вимкнув(ла) повільний режим`,
+      };
       break;
     case 'subscribers':
-      content = { en: `${mod} enabled subscribers-only mode`, ru: `${mod} включил(а) режим только для подписчиков`, uk: `${mod} увімкнув(ла) режим лише для підписників` };
+      content = {
+        en: `${mod} enabled subscribers-only mode`,
+        ru: `${mod} включил(а) режим только для подписчиков`,
+        uk: `${mod} увімкнув(ла) режим лише для підписників`,
+      };
       break;
     case 'subscribersoff':
-      content = { en: `${mod} disabled subscribers-only mode`, ru: `${mod} выключил(а) режим только для подписчиков`, uk: `${mod} вимкнув(ла) режим лише для підписників` };
+      content = {
+        en: `${mod} disabled subscribers-only mode`,
+        ru: `${mod} выключил(а) режим только для подписчиков`,
+        uk: `${mod} вимкнув(ла) режим лише для підписників`,
+      };
       break;
     case 'uniquechat':
-      content = { en: `${mod} enabled unique chat mode`, ru: `${mod} включил(а) режим уникальных сообщений`, uk: `${mod} увімкнув(ла) режим унікальних повідомлень` };
+      content = {
+        en: `${mod} enabled unique chat mode`,
+        ru: `${mod} включил(а) режим уникальных сообщений`,
+        uk: `${mod} увімкнув(ла) режим унікальних повідомлень`,
+      };
       break;
     case 'uniquechatoff':
-      content = { en: `${mod} disabled unique chat mode`, ru: `${mod} выключил(а) режим уникальных сообщений`, uk: `${mod} вимкнув(ла) режим унікальних повідомлень` };
+      content = {
+        en: `${mod} disabled unique chat mode`,
+        ru: `${mod} выключил(а) режим уникальных сообщений`,
+        uk: `${mod} вимкнув(ла) режим унікальних повідомлень`,
+      };
       break;
     case 'raid':
       content = user
@@ -692,10 +761,18 @@ export const pushModerationEvent = async (event: {
             ru: `${mod} начал(а) рейд на ${formatTargetUser(user)}`,
             uk: `${mod} розпочав(ла) рейд на ${formatTargetUser(user)}`,
           }
-        : { en: `${mod} started a raid`, ru: `${mod} начал(а) рейд`, uk: `${mod} розпочав(ла) рейд` };
+        : {
+            en: `${mod} started a raid`,
+            ru: `${mod} начал(а) рейд`,
+            uk: `${mod} розпочав(ла) рейд`,
+          };
       break;
     case 'unraid':
-      content = { en: `${mod} cancelled the raid`, ru: `${mod} отменил(а) рейд`, uk: `${mod} скасував(ла) рейд` };
+      content = {
+        en: `${mod} cancelled the raid`,
+        ru: `${mod} отменил(а) рейд`,
+        uk: `${mod} скасував(ла) рейд`,
+      };
       break;
     case 'approve_unban_request':
       content = user
@@ -704,7 +781,11 @@ export const pushModerationEvent = async (event: {
             ru: `${mod} одобрил(а) запрос на разбан ${formatTargetUser(user)}${formatReasonSuffix(event.moderator_message)}`,
             uk: `${mod} схвалив(ла) запит на розбан ${formatTargetUser(user)}${formatReasonSuffix(event.moderator_message)}`,
           }
-        : { en: `${mod} approved an unban request`, ru: `${mod} одобрил(а) запрос на разбан`, uk: `${mod} схвалив(ла) запит на розбан` };
+        : {
+            en: `${mod} approved an unban request`,
+            ru: `${mod} одобрил(а) запрос на разбан`,
+            uk: `${mod} схвалив(ла) запит на розбан`,
+          };
       break;
     case 'deny_unban_request':
       content = user
@@ -713,7 +794,11 @@ export const pushModerationEvent = async (event: {
             ru: `${mod} отклонил(а) запрос на разбан ${formatTargetUser(user)}${formatReasonSuffix(event.moderator_message)}`,
             uk: `${mod} відхилив(ла) запит на розбан ${formatTargetUser(user)}${formatReasonSuffix(event.moderator_message)}`,
           }
-        : { en: `${mod} denied an unban request`, ru: `${mod} отклонил(а) запрос на разбан`, uk: `${mod} відхилив(ла) запит на розбан` };
+        : {
+            en: `${mod} denied an unban request`,
+            ru: `${mod} отклонил(а) запрос на разбан`,
+            uk: `${mod} відхилив(ла) запит на розбан`,
+          };
       break;
     case 'add_blocked_term':
     case 'add_permitted_term':
@@ -777,8 +862,7 @@ export const pushPollEnd = async (event: {
   );
   const lines = event.choices.map(choice => {
     const votes = choice.votes ?? 0;
-    const percent =
-      totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
+    const percent = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
     return `• ${choice.title} — ${percent}% (${votes})`;
   });
   const winner = [...event.choices].sort(
