@@ -11,7 +11,7 @@
     "uk": "Інтеграція з Twitch API для відображення інформації про стрім, чат та багато іншого."
   },
   "type": "platform.streaming",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "author": "RocketMan System",
   "icon": "logo.png",
   "permissions": [
