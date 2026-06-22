@@ -1,5 +1,6 @@
 import { TwitchApi } from './api';
 import { PLATFORM } from './constants';
+import { getSettings } from './settings';
 
 export type TwitchEventUser = {
   user_id: string;
@@ -184,6 +185,71 @@ const PINNED_STYLE_HEADER = {
   ru: 'Закреплено',
   uk: 'Закріплено',
 } as const;
+
+const FIRST_MESSAGE_STYLE_HEADER = {
+  en: 'First message',
+  ru: 'Первое сообщение',
+  uk: 'Перше повідомлення',
+} as const;
+
+const CHAT_NOTIFICATION_STYLE_HEADERS = {
+  raid: {
+    en: 'Raid',
+    ru: 'Рейд',
+    uk: 'Рейд',
+  },
+  watch_streak: {
+    en: 'Watch streak',
+    ru: 'Watch streak',
+    uk: 'Watch streak',
+  },
+  subscription: {
+    en: 'Subscription',
+    ru: 'Подписка',
+    uk: 'Підписка',
+  },
+  reward: {
+    en: 'Reward',
+    ru: 'Награда',
+    uk: 'Нагорода',
+  },
+  highlighted_message: {
+    en: 'Highlighted message',
+    ru: 'Выделенное сообщение',
+    uk: 'Виділене повідомлення',
+  },
+  shoutout: {
+    en: 'Shoutout',
+    ru: 'Shoutout',
+    uk: 'Shoutout',
+  },
+} as const;
+
+const CHAT_NOTIFICATION_STYLE_COLORS = {
+  raid: '#E91E63',
+  watch_streak: '#FF9800',
+  subscription: '#9147FF',
+  reward: '#9C27B0',
+  highlighted_message: '#FFC107',
+  shoutout: '#00BCD4',
+  first_message: '#4CAF50',
+} as const;
+
+type ChatNotificationKind = keyof typeof CHAT_NOTIFICATION_STYLE_HEADERS;
+
+const chatNotificationStyle = (
+  kind: ChatNotificationKind
+): ChatMessageStyle => ({
+  color: CHAT_NOTIFICATION_STYLE_COLORS[kind],
+  header: CHAT_NOTIFICATION_STYLE_HEADERS[kind],
+  icon: 'megaphone',
+});
+
+const FIRST_MESSAGE_STYLE: ChatMessageStyle = {
+  color: CHAT_NOTIFICATION_STYLE_COLORS.first_message,
+  header: FIRST_MESSAGE_STYLE_HEADER,
+  icon: 'megaphone',
+};
 
 const PINNED_STYLE = {
   color: '#FFB800',
@@ -375,8 +441,12 @@ export const pushChatFromEventSub = async (event: {
   channel_points_custom_reward_id?: string | null;
   message_id?: string;
   is_pinned?: boolean;
+  message_type?: string;
 }) => {
   if (event.channel_points_custom_reward_id) {
+    return;
+  }
+  if (event.message_type === 'channel_points_highlighted') {
     return;
   }
   const content = event.message?.text?.trim();
@@ -391,6 +461,11 @@ export const pushChatFromEventSub = async (event: {
   const messageId = event.message_id
     ? twitchChatMessageId(event.message_id)
     : undefined;
+  const style = event.is_pinned
+    ? PINNED_STYLE
+    : event.message_type === 'user_intro' && getSettings().showFirstUserMessage
+      ? FIRST_MESSAGE_STYLE
+      : undefined;
   return pushChatMessage(
     event.chatter_user_login,
     event.chatter_user_name,
@@ -399,8 +474,81 @@ export const pushChatFromEventSub = async (event: {
     event.color,
     icons,
     emotes,
-    event.is_pinned ? PINNED_STYLE : undefined,
+    style,
     messageId
+  );
+};
+
+export const pushFramedSystemChatNotification = async (event: {
+  kind: ChatNotificationKind;
+  content: string;
+  login: string;
+  displayName: string;
+  twitchUserId: string;
+  messageId?: string;
+}) => {
+  return pushChatMessage(
+    event.login,
+    event.displayName,
+    event.content,
+    event.twitchUserId,
+    undefined,
+    undefined,
+    undefined,
+    chatNotificationStyle(event.kind),
+    event.messageId
+  );
+};
+
+export const pushShoutoutChatNotification = async (event: {
+  moderatorLogin: string;
+  moderatorName: string;
+  toLogin: string;
+  toName: string;
+  viewerCount: number;
+}) => {
+  const viewerSuffix =
+    event.viewerCount > 0 ? ` (${event.viewerCount} viewers)` : '';
+  const content = `${event.moderatorName} shouted out ${event.toName}${viewerSuffix}`;
+  return pushChatMessage(
+    event.moderatorLogin,
+    event.moderatorName,
+    content,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    chatNotificationStyle('shoutout'),
+    `twitch:shoutout:${event.toLogin}:${Date.now()}`
+  );
+};
+
+export const pushRewardRedemptionChatNotification = async (event: {
+  id: string;
+  user_id: string;
+  user_login: string;
+  user_name: string;
+  user_input?: string;
+  rewardTitle: string;
+  rewardCost: number;
+  kind?: Extract<ChatNotificationKind, 'reward' | 'highlighted_message'>;
+}) => {
+  const kind = event.kind ?? 'reward';
+  const input = event.user_input?.trim();
+  const message =
+    kind === 'highlighted_message'
+      ? formatHighlightedMessage(input)
+      : formatRewardMessage(event.rewardTitle, event.rewardCost, input);
+  return pushChatMessage(
+    event.user_login,
+    event.user_name,
+    message,
+    event.user_id,
+    undefined,
+    undefined,
+    undefined,
+    chatNotificationStyle(kind),
+    `twitch:reward-chat:${event.id}`
   );
 };
 
@@ -938,7 +1086,7 @@ export const pushCustomRewardRedemption = async (event: {
     event.reward.cost,
     input
   );
-  return dashboard.addRecord(
+  const record = await dashboard.addRecord(
     {
       id: `twitch:redemption:${event.id}`,
       type: 'custom',
@@ -959,6 +1107,20 @@ export const pushCustomRewardRedemption = async (event: {
       },
     }
   );
+
+  if (getSettings().showRewardRedemption) {
+    await pushRewardRedemptionChatNotification({
+      id: event.id,
+      user_id: event.user_id,
+      user_login: event.user_login,
+      user_name: event.user_name,
+      user_input: input,
+      rewardTitle: event.reward.title,
+      rewardCost: event.reward.cost,
+    });
+  }
+
+  return record;
 };
 
 export const pushAutomaticRewardRedemption = async (event: {
@@ -980,7 +1142,7 @@ export const pushAutomaticRewardRedemption = async (event: {
   const input =
     event.user_input?.trim() || event.message?.text?.trim() || undefined;
   const message = formatRewardMessage(title, cost, input);
-  return dashboard.addRecord(
+  const record = await dashboard.addRecord(
     {
       id: `twitch:redemption:${event.id}`,
       type: 'custom',
@@ -994,6 +1156,22 @@ export const pushAutomaticRewardRedemption = async (event: {
     },
     profile
   );
+
+  const isHighlighted = event.reward.type === 'send_highlighted_message';
+  if (getSettings().showRewardRedemption || isHighlighted) {
+    await pushRewardRedemptionChatNotification({
+      id: event.id,
+      user_id: event.user_id,
+      user_login: event.user_login,
+      user_name: event.user_name,
+      user_input: input,
+      rewardTitle: title,
+      rewardCost: cost,
+      kind: isHighlighted ? 'highlighted_message' : 'reward',
+    });
+  }
+
+  return record;
 };
 
 const formatRewardMessage = (
@@ -1006,6 +1184,11 @@ const formatRewardMessage = (
     return `«${title}»${costSuffix}: ${userInput}`;
   }
   return `«${title}»${costSuffix}`;
+};
+
+const formatHighlightedMessage = (userInput?: string) => {
+  const text = userInput?.trim();
+  return text || 'Highlighted message';
 };
 
 const formatAutomaticRewardType = (type: string) => {

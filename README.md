@@ -8,6 +8,8 @@
 
 Integration with Twitch API to display stream information, chat, and more.
 
+**Chat notifications:** configurable framed chat events — raids, shoutouts, watch streaks, reward redemptions, first-time chatter messages, and subscription notices (same style as announcements).
+
 **Install:** Settings → Addons → Install from folder (or drag-and-drop the folder/zip into the app window).
 
 ### For developers
@@ -41,6 +43,8 @@ Install the `dist/` folder contents (or the release zip) via StreamKit+ settings
 
 Интеграция с Twitch API для отображения информации о стриме, чата и многого другого.
 
+**Оповещения в чате:** настраиваемые события в рамке — рейды, shoutout, watch streak, применение наград, первые сообщения зрителей и подписки (в том же стиле, что и анонсы).
+
 **Установка:** Настройки → Аддоны → Установить из папки (или перетащите папку/zip в окно приложения).
 
 ### Для разработчиков
@@ -73,6 +77,8 @@ npm run build
 ### Для користувачів
 
 Інтеграція з Twitch API для відображення інформації про стрім, чат та багато іншого.
+
+**Сповіщення в чаті:** налаштовувані події в рамці — рейди, shoutout, watch streak, застосування нагород, перші повідомлення глядачів і підписки (у тому ж стилі, що й анонси).
 
 **Встановлення:** Налаштування → Аддони → Встановити з папки (або перетягніть папку/zip у вікно програми).
 

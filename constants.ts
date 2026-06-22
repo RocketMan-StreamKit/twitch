@@ -91,4 +91,12 @@ export const EVENTSUB_TYPES = [
       broadcaster_user_id: broadcasterId,
     }),
   },
+  {
+    type: 'channel.shoutout.create',
+    version: '1',
+    condition: (broadcasterId: string) => ({
+      broadcaster_user_id: broadcasterId,
+      moderator_user_id: broadcasterId,
+    }),
+  },
 ] as const;

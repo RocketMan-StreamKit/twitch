@@ -31,6 +31,7 @@ export const SCOPES = [
   'moderator:read:moderators',
   'moderator:read:vips',
   'channel:read:polls',
+  'moderator:read:shoutouts',
 ];
 
 /**
@@ -89,6 +90,102 @@ const buildConfigFields = (
           en: 'Show polls',
           ru: 'Отображать опросы',
           uk: 'Відображати опитування',
+        },
+      },
+    },
+    {
+      key: 'show_chat_raid',
+      type: 'boolean',
+      default: false,
+      editor: {
+        label: {
+          en: 'Show channel raids in chat',
+          ru: 'Отображать рейды канала в чате',
+          uk: 'Відображати рейди каналу в чаті',
+        },
+      },
+    },
+    {
+      key: 'chat_raid_min_viewers',
+      type: 'number',
+      default: 1,
+      editor: {
+        label: {
+          en: 'Minimum raiders for raid notification',
+          ru: 'Минимум рейдеров для оповещения о рейде',
+          uk: 'Мінімум рейдерів для сповіщення про рейд',
+        },
+      },
+    },
+    {
+      key: 'show_shoutout',
+      type: 'boolean',
+      default: false,
+      editor: {
+        label: {
+          en: 'Show shoutouts in chat',
+          ru: 'Отображать shoutout в чате',
+          uk: 'Відображати shoutout у чаті',
+        },
+      },
+    },
+    {
+      key: 'show_watch_streak',
+      type: 'boolean',
+      default: true,
+      editor: {
+        label: {
+          en: 'Show watch streaks in chat',
+          ru: 'Отображать watch streak в чате',
+          uk: 'Відображати watch streak у чаті',
+        },
+      },
+    },
+    {
+      key: 'watch_streak_min_count',
+      type: 'number',
+      default: 3,
+      editor: {
+        label: {
+          en: 'Minimum watch streak for notification',
+          ru: 'Минимальный streak для оповещения',
+          uk: 'Мінімальний streak для сповіщення',
+        },
+      },
+    },
+    {
+      key: 'show_reward_redemption',
+      type: 'boolean',
+      default: true,
+      editor: {
+        label: {
+          en: 'Show reward redemptions in chat',
+          ru: 'Отображать применение наград в чате',
+          uk: 'Відображати застосування нагород у чаті',
+        },
+      },
+    },
+    {
+      key: 'show_first_user_message',
+      type: 'boolean',
+      default: true,
+      editor: {
+        label: {
+          en: 'Show first user messages in chat',
+          ru: 'Отображать первые сообщения зрителей в чате',
+          uk: 'Відображати перші повідомлення глядачів у чаті',
+        },
+      },
+    },
+    {
+      key: 'show_chat_subscriptions',
+      type: 'boolean',
+      default: true,
+      editor: {
+        label: {
+          en: 'Show subscriptions in chat',
+          ru: 'Отображать подписки в чате',
+          uk: 'Відображати підписки в чаті',
         },
       },
     },

@@ -1,5 +1,9 @@
 import { TwitchApi, TwitchBroadcaster } from './api';
 import {
+  handleChatNotificationEvent,
+  handleShoutoutCreateEvent,
+} from './chat-notifications';
+import {
   getCurrentPinnedMessageId,
   schedulePinnedMessageRefresh,
 } from './chat-monitor';
@@ -177,7 +181,7 @@ export class TwitchEventSubClient {
   private rememberEventSubMessage(messageId: string) {
     this.seenMessageIds.add(messageId);
     if (this.seenMessageIds.size > MAX_SEEN_EVENTSUB_MESSAGE_IDS) {
-      const drop = this.seenMessageIds.size - MAX_SEEN_EVENTSUB_MESSAGE_IDS;
+      let drop = this.seenMessageIds.size - MAX_SEEN_EVENTSUB_MESSAGE_IDS;
       for (const id of this.seenMessageIds) {
         this.seenMessageIds.delete(id);
         if (--drop <= 0) {
@@ -269,86 +273,23 @@ export class TwitchEventSubClient {
         }
         break;
       case 'channel.chat.message':
-        if (
-          typeof event.chatter_user_id === 'string' &&
-          typeof event.chatter_user_login === 'string' &&
-          typeof event.chatter_user_name === 'string'
-        ) {
-          const messageId =
-            typeof event.message_id === 'string' ? event.message_id : undefined;
-          pushChatFromEventSub({
-            chatter_user_id: event.chatter_user_id,
-            chatter_user_login: event.chatter_user_login,
-            chatter_user_name: event.chatter_user_name,
-            message:
-              event.message && typeof event.message === 'object'
-                ? {
-                    text:
-                      typeof (event.message as any).text === 'string'
-                        ? (event.message as any).text
-                        : undefined,
-                    fragments: Array.isArray((event.message as any).fragments)
-                      ? (event.message as any).fragments
-                      : undefined,
-                  }
-                : undefined,
-            color: typeof event.color === 'string' ? event.color : undefined,
-            badges: Array.isArray(event.badges)
-              ? (event.badges as unknown[])
-                  .filter(b => {
-                    if (!b || typeof b !== 'object') {
-                      return false;
-                    }
-                    const badge = b as {
-                      set_id?: unknown;
-                      id?: unknown;
-                    };
-                    return (
-                      typeof badge.set_id === 'string' &&
-                      typeof badge.id === 'string'
-                    );
-                  })
-                  .map(b => {
-                    const badge = b as { set_id: string; id: string };
-                    return { set_id: badge.set_id, id: badge.id };
-                  })
-              : undefined,
-            channel_points_custom_reward_id:
-              typeof event.channel_points_custom_reward_id === 'string'
-                ? event.channel_points_custom_reward_id
-                : null,
-            message_id: messageId,
-            is_pinned: Boolean(
-              messageId && messageId === getCurrentPinnedMessageId()
-            ),
-          }).catch(error => console.error(error));
-          schedulePinnedMessageRefresh();
-        }
-        break;
-      case 'channel.chat.notification':
-        if (
-          typeof event.chatter_user_id === 'string' &&
-          typeof event.chatter_user_login === 'string' &&
-          typeof event.chatter_user_name === 'string'
-        ) {
-          const noticeType = event.notice_type;
-          if (
-            noticeType === 'announcement' ||
-            noticeType === 'shared_chat_announcement'
-          ) {
-            const announcementPayload =
-              noticeType === 'shared_chat_announcement'
-                ? event.shared_chat_announcement
-                : event.announcement;
-            const announcementColor =
-              announcementPayload &&
-              typeof announcementPayload === 'object' &&
-              typeof (announcementPayload as { color?: string }).color ===
-                'string'
-                ? (announcementPayload as { color: string }).color
-                : 'primary';
+        void reloadSettings()
+          .then(() => {
+            const event = frame.payload.event;
+            if (
+              !event ||
+              typeof event.chatter_user_id !== 'string' ||
+              typeof event.chatter_user_login !== 'string' ||
+              typeof event.chatter_user_name !== 'string'
+            ) {
+              return;
+            }
 
-            pushChatAnnouncementFromEventSub({
+            const messageId =
+              typeof event.message_id === 'string'
+                ? event.message_id
+                : undefined;
+            return pushChatFromEventSub({
               chatter_user_id: event.chatter_user_id,
               chatter_user_login: event.chatter_user_login,
               chatter_user_name: event.chatter_user_name,
@@ -385,14 +326,104 @@ export class TwitchEventSubClient {
                       return { set_id: badge.set_id, id: badge.id };
                     })
                 : undefined,
-              message_id:
-                typeof event.message_id === 'string'
-                  ? event.message_id
+              channel_points_custom_reward_id:
+                typeof event.channel_points_custom_reward_id === 'string'
+                  ? event.channel_points_custom_reward_id
+                  : null,
+              message_id: messageId,
+              is_pinned: Boolean(
+                messageId && messageId === getCurrentPinnedMessageId()
+              ),
+              message_type:
+                typeof event.message_type === 'string'
+                  ? event.message_type
                   : undefined,
-              announcement_color: announcementColor,
-            }).catch(error => console.error(error));
-          }
-        }
+            });
+          })
+          .then(() => schedulePinnedMessageRefresh())
+          .catch(error => console.error(error));
+        break;
+      case 'channel.chat.notification':
+        void reloadSettings()
+          .then(() => {
+            const event = frame.payload.event;
+            if (
+              !event ||
+              typeof event.chatter_user_id !== 'string' ||
+              typeof event.chatter_user_login !== 'string' ||
+              typeof event.chatter_user_name !== 'string'
+            ) {
+              return;
+            }
+
+            const noticeType = event.notice_type;
+            if (
+              noticeType === 'announcement' ||
+              noticeType === 'shared_chat_announcement'
+            ) {
+              const announcementPayload =
+                noticeType === 'shared_chat_announcement'
+                  ? event.shared_chat_announcement
+                  : event.announcement;
+              const announcementColor =
+                announcementPayload &&
+                typeof announcementPayload === 'object' &&
+                typeof (announcementPayload as { color?: string }).color ===
+                  'string'
+                  ? (announcementPayload as { color: string }).color
+                  : 'primary';
+
+              return pushChatAnnouncementFromEventSub({
+                chatter_user_id: event.chatter_user_id,
+                chatter_user_login: event.chatter_user_login,
+                chatter_user_name: event.chatter_user_name,
+                message:
+                  event.message && typeof event.message === 'object'
+                    ? {
+                        text:
+                          typeof (event.message as any).text === 'string'
+                            ? (event.message as any).text
+                            : undefined,
+                        fragments: Array.isArray(
+                          (event.message as any).fragments
+                        )
+                          ? (event.message as any).fragments
+                          : undefined,
+                      }
+                    : undefined,
+                color:
+                  typeof event.color === 'string' ? event.color : undefined,
+                badges: Array.isArray(event.badges)
+                  ? (event.badges as unknown[])
+                      .filter(b => {
+                        if (!b || typeof b !== 'object') {
+                          return false;
+                        }
+                        const badge = b as {
+                          set_id?: unknown;
+                          id?: unknown;
+                        };
+                        return (
+                          typeof badge.set_id === 'string' &&
+                          typeof badge.id === 'string'
+                        );
+                      })
+                      .map(b => {
+                        const badge = b as { set_id: string; id: string };
+                        return { set_id: badge.set_id, id: badge.id };
+                      })
+                  : undefined,
+                message_id:
+                  typeof event.message_id === 'string'
+                    ? event.message_id
+                    : undefined,
+                announcement_color: announcementColor,
+              });
+            }
+
+            return handleChatNotificationEvent(event);
+          })
+          .catch(error => console.error(error));
         break;
       case 'channel.moderate':
         void reloadSettings()
@@ -453,17 +484,21 @@ export class TwitchEventSubClient {
             title: string;
             cost: number;
           };
-          pushCustomRewardRedemption({
-            id: event.id,
-            user_id: event.user_id,
-            user_login: event.user_login,
-            user_name: event.user_name,
-            user_input:
-              typeof event.user_input === 'string'
-                ? event.user_input
-                : undefined,
-            reward,
-          }).catch(error => console.error(error));
+          void reloadSettings()
+            .then(() =>
+              pushCustomRewardRedemption({
+                id: event.id as string,
+                user_id: event.user_id,
+                user_login: event.user_login,
+                user_name: event.user_name,
+                user_input:
+                  typeof event.user_input === 'string'
+                    ? event.user_input
+                    : undefined,
+                reward,
+              })
+            )
+            .catch(error => console.error(error));
         }
         break;
       case 'channel.channel_points_automatic_reward_redemption.add':
@@ -474,26 +509,40 @@ export class TwitchEventSubClient {
           typeof event.reward === 'object' &&
           typeof (event.reward as { type?: string }).type === 'string'
         ) {
-          pushAutomaticRewardRedemption({
-            id: event.id,
-            user_id: event.user_id,
-            user_login: event.user_login,
-            user_name: event.user_name,
-            user_input:
-              typeof event.user_input === 'string'
-                ? event.user_input
-                : undefined,
-            reward: event.reward as {
-              type: string;
-              channel_points?: number;
-              cost?: number;
-            },
-            message:
-              event.message && typeof event.message === 'object'
-                ? (event.message as { text?: string })
-                : undefined,
-          }).catch(error => console.error(error));
+          void reloadSettings()
+            .then(() =>
+              pushAutomaticRewardRedemption({
+                id: event.id as string,
+                user_id: event.user_id,
+                user_login: event.user_login,
+                user_name: event.user_name,
+                user_input:
+                  typeof event.user_input === 'string'
+                    ? event.user_input
+                    : undefined,
+                reward: event.reward as {
+                  type: string;
+                  channel_points?: number;
+                  cost?: number;
+                },
+                message:
+                  event.message && typeof event.message === 'object'
+                    ? (event.message as { text?: string })
+                    : undefined,
+              })
+            )
+            .catch(error => console.error(error));
         }
+        break;
+      case 'channel.shoutout.create':
+        void reloadSettings()
+          .then(() => {
+            if (!event) {
+              return;
+            }
+            return handleShoutoutCreateEvent(event);
+          })
+          .catch(error => console.error(error));
         break;
       default:
         break;
