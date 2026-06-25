@@ -70,6 +70,7 @@ events.On(
       valueId: ensured.reward.id,
       label: ensured.reward.title,
       meta: String(ensured.reward.cost),
+      reloadList: true,
     };
   }
 );
