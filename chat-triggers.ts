@@ -26,6 +26,16 @@ type TriggerCarrier = {
 let chatTriggerRules: ChatTriggerRule[] = [];
 
 /**
+ * Builds a dashboard record message for a matched chat trigger.
+ * @param content Chat message text.
+ */
+const formatChatTriggerRecordMessage = (content: string) => ({
+  en: `Chat message: ${content}`,
+  ru: `Сообщение в чате: ${content}`,
+  uk: `Повідомлення в чаті: ${content}`,
+});
+
+/**
  * Builds a stable id for deduplicating saved chat trigger rules.
  * @param rule Trigger rule from settings.
  */
@@ -164,7 +174,7 @@ export const dispatchChatMessageTriggers = async (
       type: 'custom',
       platform: PLATFORM,
       from: profile.id,
-      message: content,
+      message: formatChatTriggerRecordMessage(content),
     },
     profile,
     {
