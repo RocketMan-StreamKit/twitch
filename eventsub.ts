@@ -26,6 +26,7 @@ import {
 import { buildModerationFeedEvent, buildPollFeedEvent } from './moderation';
 import { getSettings, reloadSettings } from './settings';
 import { notifyConnectionStatus } from './status-notify';
+import { onStreamOffline, refreshViewerCount } from './viewer-count';
 
 type EventSubFrame = {
   metadata: {
@@ -543,6 +544,14 @@ export class TwitchEventSubClient {
             return handleShoutoutCreateEvent(event);
           })
           .catch(error => console.error(error));
+        break;
+      case 'stream.online':
+        void refreshViewerCount(this.broadcaster.id).catch(error =>
+          console.error(error)
+        );
+        break;
+      case 'stream.offline':
+        onStreamOffline();
         break;
       default:
         break;

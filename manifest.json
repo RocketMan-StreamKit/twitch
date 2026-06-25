@@ -6,12 +6,13 @@
     "uk": "Twitch"
   },
   "description": {
-    "en": "Integration with Twitch API to display stream information, chat, and more.",
-    "ru": "Интеграция с Twitch API для отображения информации о стриме, чата и многого другого.",
-    "uk": "Інтеграція з Twitch API для відображення інформації про стрім, чат та багато іншого."
+    "en": "Integration with Twitch API to display stream information, chat, viewer count in the status bar, and more.",
+    "ru": "Интеграция с Twitch API для отображения информации о стриме, чата, онлайна в строке состояния и многого другого.",
+    "uk": "Інтеграція з Twitch API для відображення інформації про стрім, чат, онлайну в рядку стану та багато іншого."
   },
   "type": "platform.streaming",
   "version": "1.0.6",
+  "app_version": "1.0.17",
   "author": "RocketMan System",
   "icon": "logo.png",
   "permissions": [

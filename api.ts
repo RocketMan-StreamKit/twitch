@@ -159,6 +159,49 @@ export const TwitchApi = new (class {
     return { ok: true, body };
   }
 
+  async GetLiveStream(
+    broadcasterId: string
+  ): Promise<{ viewerCount: number } | null> {
+    const accessToken = this.accessToken;
+    if (!accessToken || !broadcasterId) {
+      return null;
+    }
+
+    try {
+      const response = await network.request.get(
+        `https://api.twitch.tv/helix/streams?user_id=${encodeURIComponent(
+          broadcasterId
+        )}`,
+        {
+          Authorization: `Bearer ${accessToken}`,
+          'Client-ID': CLIENT_ID,
+        }
+      );
+      const parsed = this.parseHelixBody<{
+        data?: { viewer_count?: number }[];
+      }>(response, 'Failed to fetch Twitch stream');
+      if (!parsed.ok) {
+        console.warn(parsed.message);
+        return null;
+      }
+
+      const stream = parsed.body.data?.[0];
+      if (!stream) {
+        return null;
+      }
+
+      const viewerCount = Number(stream.viewer_count);
+      return {
+        viewerCount: Number.isFinite(viewerCount)
+          ? Math.max(0, Math.floor(viewerCount))
+          : 0,
+      };
+    } catch (error) {
+      console.error('Failed to fetch Twitch stream:', error);
+      return null;
+    }
+  }
+
   async GetMe(): Promise<TwitchBroadcaster | null> {
     const accessToken = this.accessToken;
     if (!accessToken) {

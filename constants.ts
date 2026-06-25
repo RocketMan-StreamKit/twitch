@@ -99,4 +99,18 @@ export const EVENTSUB_TYPES = [
       moderator_user_id: broadcasterId,
     }),
   },
+  {
+    type: 'stream.online',
+    version: '1',
+    condition: (broadcasterId: string) => ({
+      broadcaster_user_id: broadcasterId,
+    }),
+  },
+  {
+    type: 'stream.offline',
+    version: '1',
+    condition: (broadcasterId: string) => ({
+      broadcaster_user_id: broadcasterId,
+    }),
+  },
 ] as const;

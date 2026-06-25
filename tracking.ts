@@ -4,6 +4,12 @@ import { PLATFORM } from './constants';
 import { TwitchEventSubClient } from './eventsub';
 import { reloadSettings } from './settings';
 import { notifyConnectionStatus } from './status-notify';
+import {
+  onStreamOffline,
+  refreshViewerCount,
+  reportViewerOffline,
+  stopViewerCountPolling,
+} from './viewer-count';
 
 let eventSub: TwitchEventSubClient | null = null;
 let starting = false;
@@ -29,6 +35,7 @@ export const startTwitchTracking = async () => {
     if (!user || !TwitchApi.accessToken) {
       status.Update({ current: 'offline' });
       notifyConnectionStatus('offline');
+      reportViewerOffline();
       return;
     }
 
@@ -59,6 +66,7 @@ export const startTwitchTracking = async () => {
     eventSub = new TwitchEventSubClient(user);
     await eventSub.start();
     await startChatMonitor(user.id);
+    await refreshViewerCount(user.id);
 
     void dashboard.onChatSend(async ({ text }) => {
       if (!TwitchApi.accessToken || !broadcasterId) {
@@ -89,6 +97,7 @@ export const stopTwitchTracking = (options?: { notify?: boolean }) => {
   eventSub?.stop();
   eventSub = null;
   broadcasterId = null;
+  stopViewerCountPolling();
   if (badgesRefreshTimer) {
     clearInterval(badgesRefreshTimer);
     badgesRefreshTimer = null;
@@ -98,6 +107,7 @@ export const stopTwitchTracking = (options?: { notify?: boolean }) => {
     emotesRefreshTimer = null;
   }
   status.Update({ current: 'offline' });
+  reportViewerOffline();
   if (options?.notify !== false) {
     notifyConnectionStatus('offline');
   }

@@ -6,7 +6,7 @@
 
 ### For users
 
-Integration with Twitch API to display stream information, chat, and more.
+Integration with Twitch API to display stream information, chat, viewer count in the status bar, and more.
 
 **Chat notifications:** configurable framed chat events — raids, shoutouts, watch streaks, reward redemptions, first-time chatter messages, and subscription notices (same style as announcements).
 
@@ -41,7 +41,7 @@ Install the `dist/` folder contents (or the release zip) via StreamKit+ settings
 
 ### Для пользователей
 
-Интеграция с Twitch API для отображения информации о стриме, чата и многого другого.
+Интеграция с Twitch API для отображения информации о стриме, чата, онлайна в строке состояния и многого другого.
 
 **Оповещения в чате:** настраиваемые события в рамке — рейды, shoutout, watch streak, применение наград, первые сообщения зрителей и подписки (в том же стиле, что и анонсы).
 
@@ -76,7 +76,7 @@ npm run build
 
 ### Для користувачів
 
-Інтеграція з Twitch API для відображення інформації про стрім, чат та багато іншого.
+Інтеграція з Twitch API для відображення інформації про стрім, чат, онлайну в рядку стану та багато іншого.
 
 **Сповіщення в чаті:** налаштовувані події в рамці — рейди, shoutout, watch streak, застосування нагород, перші повідомлення глядачів і підписки (у тому ж стилі, що й анонси).
 
