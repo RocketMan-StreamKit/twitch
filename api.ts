@@ -554,6 +554,131 @@ export const TwitchApi = new (class {
     }
   }
 
+  /**
+   * Updates the channel points cost of an existing custom reward on Twitch.
+   * @param rewardId Twitch reward id.
+   * @param cost New channel points cost (minimum 1).
+   * @example
+   * const result = await TwitchApi.UpdateCustomReward('reward-id', 500);
+   */
+  async UpdateCustomReward(
+    rewardId: string,
+    cost: number
+  ): Promise<{
+    success: boolean;
+    reward?: TwitchCustomReward;
+    message?: string;
+  }> {
+    const accessToken = this.accessToken;
+    if (!accessToken) {
+      return { success: false, message: 'Twitch is not authorized' };
+    }
+
+    const broadcaster = await this.GetMe();
+    if (!broadcaster) {
+      return { success: false, message: 'Twitch channel not found' };
+    }
+
+    const trimmedRewardId = rewardId.trim();
+    if (!trimmedRewardId) {
+      return { success: false, message: 'Reward id is required' };
+    }
+
+    const normalizedCost = Math.max(1, Math.floor(cost));
+    const query = new URLSearchParams({
+      broadcaster_id: broadcaster.id,
+      id: trimmedRewardId,
+    });
+
+    try {
+      const response = await network.request.put(
+        `https://api.twitch.tv/helix/channel_points/custom_rewards?${query}`,
+        { cost: normalizedCost },
+        this.authHeaders()
+      );
+      const parsed = this.parseHelixBody<{ data?: TwitchCustomReward[] }>(
+        response,
+        'Failed to update Twitch reward'
+      );
+      if (!parsed.ok) {
+        return { success: false, message: parsed.message };
+      }
+
+      const reward = parsed.body.data?.[0];
+      if (!reward?.id) {
+        return { success: false, message: 'Twitch did not return reward id' };
+      }
+
+      return { success: true, reward };
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Failed to update Twitch reward';
+      console.error('Failed to update Twitch custom reward:', message);
+      return { success: false, message };
+    }
+  }
+
+  /**
+   * Reuses an existing reward with the same title or creates a new one.
+   * When a matching reward already exists, its cost is updated to the requested value.
+   * @param title Reward title (max 45 characters).
+   * @param cost Channel points cost (minimum 1).
+   * @example
+   * const result = await TwitchApi.EnsureCustomReward('Hydrate', 100);
+   */
+  async EnsureCustomReward(
+    title: string,
+    cost = 1
+  ): Promise<{
+    success: boolean;
+    reward?: TwitchCustomReward;
+    message?: string;
+  }> {
+    const trimmedTitle = title.trim().slice(0, 45);
+    if (!trimmedTitle) {
+      return { success: false, message: 'Reward title is required' };
+    }
+
+    const normalizedCost = Math.max(1, Math.floor(cost));
+    const listed = await this.ListCustomRewards();
+    if (!listed.success) {
+      return {
+        success: false,
+        message: listed.message || 'Failed to load Twitch rewards',
+      };
+    }
+
+    const existing = listed.rewards.find(
+      reward => reward.title === trimmedTitle
+    );
+    if (!existing) {
+      return this.CreateCustomReward(trimmedTitle, normalizedCost);
+    }
+
+    if (existing.cost === normalizedCost) {
+      return { success: true, reward: existing };
+    }
+
+    const updated = await this.UpdateCustomReward(existing.id, normalizedCost);
+    if (updated.success && updated.reward) {
+      return updated;
+    }
+
+    const deleted = await this.DeleteCustomReward(existing.id);
+    if (deleted) {
+      return this.CreateCustomReward(trimmedTitle, normalizedCost);
+    }
+
+    return {
+      success: false,
+      message:
+        updated.message ||
+        'Failed to update Twitch reward cost for an existing reward',
+    };
+  }
+
   async GetPinnedChatMessage(
     broadcasterId: string
   ): Promise<TwitchPinnedChatMessage | null> {

@@ -57,19 +57,19 @@ events.On(
       return { success: false, message: 'Reward cost must be at least 1' };
     }
 
-    const created = await TwitchApi.CreateCustomReward(title, cost);
-    if (!created.success || !created.reward?.id) {
+    const ensured = await TwitchApi.EnsureCustomReward(title, cost);
+    if (!ensured.success || !ensured.reward?.id) {
       return {
         success: false,
-        message: created.message || 'Failed to create Twitch reward',
+        message: ensured.message || 'Failed to create Twitch reward',
       };
     }
 
     return {
       success: true,
-      valueId: created.reward.id,
-      label: created.reward.title,
-      meta: String(created.reward.cost),
+      valueId: ensured.reward.id,
+      label: ensured.reward.title,
+      meta: String(ensured.reward.cost),
     };
   }
 );
