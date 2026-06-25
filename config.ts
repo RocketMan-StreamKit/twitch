@@ -171,9 +171,9 @@ const buildConfigFields = (
       default: false,
       editor: {
         label: {
-          en: 'Delete unused channel point rewards',
-          ru: 'Удалять неиспользуемые награды',
-          uk: 'Видаляти невикористані нагороди',
+          en: 'Delete rewards when deleting triggers',
+          ru: 'Удалять награды при удалении триггеров',
+          uk: 'Видаляти нагороди при видаленні тригерів',
         },
       },
     },
