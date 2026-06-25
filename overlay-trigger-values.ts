@@ -1,4 +1,5 @@
 import { TwitchApi } from './api';
+import { reloadSettings } from './settings';
 
 const PROVIDER = 'rewards';
 
@@ -83,6 +84,11 @@ events.On(
     const valueId = payload?.valueId?.trim();
     if (!valueId) {
       return { success: false, message: 'Invalid reward id' };
+    }
+
+    const settings = await reloadSettings();
+    if (!settings.deleteUnusedRewards) {
+      return { success: true };
     }
 
     const deleted = await TwitchApi.DeleteCustomReward(valueId);

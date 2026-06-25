@@ -166,6 +166,18 @@ const buildConfigFields = (
       },
     },
     {
+      key: 'delete_unused_rewards',
+      type: 'boolean',
+      default: false,
+      editor: {
+        label: {
+          en: 'Delete unused channel point rewards',
+          ru: 'Удалять неиспользуемые награды',
+          uk: 'Видаляти невикористані нагороди',
+        },
+      },
+    },
+    {
       key: 'show_first_user_message',
       type: 'boolean',
       default: true,
