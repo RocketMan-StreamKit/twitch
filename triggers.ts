@@ -76,6 +76,51 @@ export const registerTwitchOverlayTriggers = () => {
     },
     {
       type: 'custom',
+      key: 'message',
+      label: {
+        en: 'Chat message (exact match)',
+        ru: 'Сообщение из чата (полное совпадение)',
+        uk: 'Повідомлення з чату (повний збіг)',
+      },
+      valueType: 'text',
+      valueHint: {
+        en: 'Message text must match exactly',
+        ru: 'Текст сообщения должен полностью совпадать',
+        uk: 'Текст повідомлення має повністю збігатися',
+      },
+    },
+    {
+      type: 'custom',
+      key: 'message_contains',
+      label: {
+        en: 'Chat message containing…',
+        ru: 'Сообщение из чата, содержащее…',
+        uk: 'Повідомлення з чату, що містить…',
+      },
+      valueType: 'text',
+      valueHint: {
+        en: 'Message must include this text',
+        ru: 'Сообщение должно содержать этот текст',
+        uk: 'Повідомлення має містити цей текст',
+      },
+    },
+    {
+      type: 'custom',
+      key: 'message_starts_with',
+      label: {
+        en: 'Chat message starting with…',
+        ru: 'Сообщение из чата, начинающееся с…',
+        uk: 'Повідомлення з чату, що починається з…',
+      },
+      valueType: 'text',
+      valueHint: {
+        en: 'Message must start with this text',
+        ru: 'Сообщение должно начинаться с этого текста',
+        uk: 'Повідомлення має починатися з цього тексту',
+      },
+    },
+    {
+      type: 'custom',
       key: 'redeems',
       label: {
         en: 'Channel point reward',

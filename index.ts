@@ -1,5 +1,6 @@
 import './auth';
 import './requests';
+import './chat-triggers';
 import './overlay-trigger-values';
 import { RegenerateConfig } from './config';
 import { PLATFORM } from './constants';

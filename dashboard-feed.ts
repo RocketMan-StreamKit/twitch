@@ -1,56 +1,16 @@
-import { TwitchApi } from './api';
+import { dispatchChatMessageTriggers } from './chat-triggers';
 import { PLATFORM } from './constants';
+import {
+  buildTwitchProfile,
+  resolveUserAvatar,
+  type TwitchEventUser,
+} from './dashboard-user';
 import { getSettings } from './settings';
 
-export type TwitchEventUser = {
-  user_id: string;
-  user_login: string;
-  user_name: string;
-};
+export type { TwitchEventUser } from './dashboard-user';
+export { buildTwitchProfile, toDashboardUser } from './dashboard-user';
 
 const userId = (id: string) => `twitch:${id}`;
-
-const avatarCache = new Map<string, string>();
-
-const resolveUserAvatar = async (twitchUserId: string) => {
-  if (!twitchUserId || twitchUserId === 'anonymous') {
-    return '';
-  }
-
-  const cached = avatarCache.get(twitchUserId);
-  if (cached) {
-    return cached;
-  }
-
-  const url = await TwitchApi.GetUserProfileImage(twitchUserId);
-  if (!url) {
-    return '';
-  }
-
-  avatarCache.set(twitchUserId, url);
-  return url;
-};
-
-const buildTwitchProfile = async (
-  user: TwitchEventUser,
-  extra?: { color?: string }
-) => {
-  const avatar = await resolveUserAvatar(user.user_id);
-  return {
-    id: userId(user.user_id),
-    name: user.user_name,
-    avatar,
-    platform: PLATFORM,
-    ...extra,
-  };
-};
-
-export const toDashboardUser = (user: TwitchEventUser, avatar = '') => ({
-  id: userId(user.user_id),
-  name: user.user_name,
-  avatar,
-  platform: PLATFORM,
-});
 
 export const pushFollow = async (user: TwitchEventUser) => {
   const profile = await buildTwitchProfile(user);
@@ -466,7 +426,7 @@ export const pushChatFromEventSub = async (event: {
     : event.message_type === 'user_intro' && getSettings().showFirstUserMessage
       ? FIRST_MESSAGE_STYLE
       : undefined;
-  return pushChatMessage(
+  await pushChatMessage(
     event.chatter_user_login,
     event.chatter_user_name,
     content,
@@ -476,6 +436,16 @@ export const pushChatFromEventSub = async (event: {
     emotes,
     style,
     messageId
+  );
+
+  await dispatchChatMessageTriggers(
+    {
+      user_id: event.chatter_user_id,
+      user_login: event.chatter_user_login,
+      user_name: event.chatter_user_name,
+    },
+    content,
+    event.message_id
   );
 };
 
