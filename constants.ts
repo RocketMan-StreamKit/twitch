@@ -1,5 +1,11 @@
 export const PLATFORM = 'twitch';
 
+/** Twitch application client id used for OAuth and Helix API calls. */
+export const CLIENT_ID = '9e32kmze4fkvldsxqr3apoq3k5qpmm';
+
+/** Allowed hostnames for addon-to-addon Twitch API proxy requests. */
+export const TWITCH_API_HOSTS = new Set(['api.twitch.tv', 'id.twitch.tv']);
+
 export const EVENTSUB_WS_URL =
   'wss://eventsub.wss.twitch.tv/ws?keepalive_timeout_seconds=30';
 

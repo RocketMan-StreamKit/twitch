@@ -1,7 +1,13 @@
 import { TwitchApi } from './api';
+import {
+  getMissingScopes,
+  getRequiredScopes,
+  loadPersistedScopeRequests,
+  requestReauthorizationIfNeeded,
+  setGrantedScopes,
+  setHadAuthorization,
+} from './scopes';
 import { startTwitchTracking, stopTwitchTracking } from './tracking';
-
-export const CLIENT_ID = `9e32kmze4fkvldsxqr3apoq3k5qpmm`;
 
 const clearTwitchAuth = () => {
   stopTwitchTracking();
@@ -10,29 +16,6 @@ const clearTwitchAuth = () => {
     RegenerateConfig();
   });
 };
-
-/** Scopes for EventSub (bits, subs, follows) and IRC chat. */
-export const SCOPES = [
-  'user:read:email',
-  'user:read:chat',
-  'user:write:chat',
-  'channel:read:subscriptions',
-  'channel:read:redemptions',
-  'channel:manage:redemptions',
-  'bits:read',
-  'moderator:read:followers',
-  'moderator:read:chat_messages',
-  'moderator:read:chatters',
-  'moderator:read:banned_users',
-  'moderator:read:chat_settings',
-  'moderator:read:blocked_terms',
-  'moderator:read:unban_requests',
-  'moderator:read:warnings',
-  'moderator:read:moderators',
-  'moderator:read:vips',
-  'channel:read:polls',
-  'moderator:read:shoutouts',
-];
 
 /**
  * Builds localized logout button labels with the authorized Twitch login in parentheses.
@@ -214,6 +197,11 @@ const buildConfigFields = (
     type: 'number',
     default: 0,
   },
+  {
+    key: 'addon_requested_scopes',
+    type: 'object',
+    default: {},
+  },
   ...(access_token ? chatSettings : []),
   access_token
     ? {
@@ -245,12 +233,20 @@ export const RegenerateConfig = () => {
   void api.config.getParams().then(async params => {
     const access_token = params.access_token;
     TwitchApi.accessToken = access_token;
+    await loadPersistedScopeRequests();
+    setHadAuthorization(Boolean(access_token));
 
     if (TwitchApi.accessToken) {
-      const scopesOk = await TwitchApi.validateTokenScopes(SCOPES);
-      if (!scopesOk) {
+      const validation = await TwitchApi.fetchTokenValidation();
+      if (validation.status !== 'valid') {
         await clearTwitchAuth();
         return;
+      }
+
+      setGrantedScopes(validation.scopes);
+      const missingScopes = getMissingScopes(getRequiredScopes());
+      if (missingScopes.length > 0) {
+        requestReauthorizationIfNeeded(missingScopes);
       }
 
       const user = await TwitchApi.GetMe();

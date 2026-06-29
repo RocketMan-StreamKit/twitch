@@ -1,4 +1,4 @@
-import { CLIENT_ID } from './config';
+import { CLIENT_ID, TWITCH_API_HOSTS } from './constants';
 import { EVENTSUB_TYPES } from './constants';
 
 export type TwitchBroadcaster = {
@@ -65,10 +65,16 @@ export const TwitchApi = new (class {
     };
   }
 
-  async validateTokenScopes(required: readonly string[]): Promise<boolean> {
+  /**
+   * Validates the stored token and returns granted scopes when the token is valid.
+   */
+  async fetchTokenValidation(): Promise<
+    | { status: 'valid'; scopes: string[] }
+    | { status: 'invalid'; message?: string }
+  > {
     const accessToken = this.accessToken;
     if (!accessToken) {
-      return false;
+      return { status: 'invalid', message: 'No access token' };
     }
 
     try {
@@ -86,18 +92,120 @@ export const TwitchApi = new (class {
           'Twitch token validation failed:',
           data.message ?? response
         );
-        return false;
+        return { status: 'invalid', message: data.message ?? response };
       }
-      const granted = new Set(data.scopes ?? []);
-      const missing = required.filter(scope => !granted.has(scope));
-      if (missing.length > 0) {
-        console.warn('Twitch token missing scopes:', missing.join(', '));
-        return false;
-      }
-      return true;
+      return { status: 'valid', scopes: data.scopes ?? [] };
     } catch (error) {
       console.error(error);
+      return {
+        status: 'invalid',
+        message: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  async validateTokenScopes(required: readonly string[]): Promise<boolean> {
+    const validation = await this.fetchTokenValidation();
+    if (validation.status !== 'valid') {
       return false;
+    }
+
+    const granted = new Set(validation.scopes);
+    const missing = required.filter(scope => !granted.has(scope));
+    if (missing.length > 0) {
+      console.warn('Twitch token missing scopes:', missing.join(', '));
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Returns true when the URL targets an allowed Twitch API host.
+   * @param url Absolute Twitch API URL requested by another addon.
+   */
+  isAllowedTwitchApiUrl(url: string): boolean {
+    try {
+      const parsed = new URL(url);
+      return (
+        parsed.protocol === 'https:' && TWITCH_API_HOSTS.has(parsed.hostname)
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Proxies a Twitch API request using the addon OAuth token.
+   * @param method HTTP method.
+   * @param url Absolute Twitch API URL.
+   * @param body Optional JSON body for POST/PUT.
+   */
+  async proxyTwitchApiRequest(
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+    url: string,
+    body?: unknown
+  ): Promise<{
+    ok: boolean;
+    status?: number;
+    body: string;
+    message?: string;
+  }> {
+    const accessToken = this.accessToken;
+    if (!accessToken) {
+      return { ok: false, body: '', message: 'Twitch is not authorized' };
+    }
+    if (!this.isAllowedTwitchApiUrl(url)) {
+      return {
+        ok: false,
+        body: '',
+        message: 'Only https://api.twitch.tv and https://id.twitch.tv URLs are allowed',
+      };
+    }
+
+    const headers = this.authHeaders();
+    try {
+      let response = '';
+      switch (method) {
+        case 'GET':
+          response = await network.request.get(url, headers);
+          break;
+        case 'POST':
+          response = await network.request.post(url, body ?? {}, headers);
+          break;
+        case 'PUT':
+          response = await network.request.put(url, body ?? {}, headers);
+          break;
+        case 'DELETE':
+          response = await network.request.delete(url, headers);
+          break;
+      }
+
+      const parsed = response?.trim()
+        ? (JSON.parse(response) as {
+            status?: number;
+            message?: string;
+            error?: string;
+          })
+        : null;
+      const status = parsed?.status;
+      const hasError =
+        Boolean(parsed?.error) || (typeof status === 'number' && status >= 400);
+      if (hasError) {
+        return {
+          ok: false,
+          status,
+          body: response,
+          message: parsed?.message ?? parsed?.error ?? response,
+        };
+      }
+
+      return { ok: true, status, body: response };
+    } catch (error) {
+      return {
+        ok: false,
+        body: '',
+        message: error instanceof Error ? error.message : String(error),
+      };
     }
   }
 

@@ -12,6 +12,8 @@ Integration with Twitch API to display stream information, chat, viewer count in
 
 **Channel point rewards:** optional setting to delete Twitch rewards when they are removed from all triggers in the app (off by default). Generating a reward through a trigger reuses an existing reward with the same title and updates its cost.
 
+**Addon RPC:** other addons can reuse Twitch OAuth and Helix API through `addons.request('twitch', …)` — `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, and `getChannelId`. Missing scopes trigger re-authorization in the browser when the user was already logged in.
+
 **Install:** Settings → Addons → Install from folder (or drag-and-drop the folder/zip into the app window).
 
 ### For developers
@@ -39,6 +41,24 @@ Install the `dist/` folder contents (or the release zip) via StreamKit+ settings
 | Type | `platform.streaming` |
 | Permissions | NETWORK_REQUEST, NETWORK_WEBSOCKET, WEB_END_POINTS, DASHBOARD_EVENTS, DASHBOARD_CHAT, STATUS, NOTIFY |
 
+**Addon-to-addon API** (`depends_on: ["twitch"]` recommended):
+
+```ts
+// Current OAuth scopes
+const { grantedScopes, requiredScopes } = await addons.request('twitch', 'getScopes');
+
+// Request additional scopes (logged: which addon requested which scope)
+await addons.request('twitch', 'addScopes', { scopes: ['clips:edit'] });
+
+// Proxy Twitch API calls (logged: which addon requested which URL)
+const clips = await addons.request('twitch', 'apiGet', {
+  url: 'https://api.twitch.tv/helix/clips?broadcaster_id=123',
+  scopes: ['clips:edit'],
+});
+```
+
+Methods: `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `getChannelId`. If scopes are missing and the user was previously authorized, the Twitch addon opens OAuth in the browser automatically.
+
 ## Русский
 
 ### Для пользователей
@@ -48,6 +68,8 @@ Install the `dist/` folder contents (or the release zip) via StreamKit+ settings
 **Оповещения в чате:** настраиваемые события в рамке — рейды, shoutout, watch streak, применение наград, первые сообщения зрителей и подписки (в том же стиле, что и анонсы).
 
 **Награды за баллы канала:** опциональная настройка удалять награды Twitch, когда они убраны из всех триггеров в приложении (по умолчанию выключено). При генерации награды через триггер используется существующая награда с таким же названием, а её стоимость обновляется.
+
+**RPC для аддонов:** другие аддоны могут использовать OAuth и Helix API Twitch через `addons.request('twitch', …)` — `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `getChannelId`. При нехватке scope откроется повторная авторизация в браузере, если пользователь уже входил ранее.
 
 **Установка:** Настройки → Аддоны → Установить из папки (или перетащите папку/zip в окно приложения).
 
@@ -85,6 +107,8 @@ npm run build
 **Сповіщення в чаті:** налаштовувані події в рамці — рейди, shoutout, watch streak, застосування нагород, перші повідомлення глядачів і підписки (у тому ж стилі, що й анонси).
 
 **Нагороди за бали каналу:** опціональне налаштування видаляти нагороди Twitch, коли їх прибрано з усіх тригерів у програмі (за замовчуванням вимкнено). Під час генерації нагороди через тригер використовується існуюча нагорода з такою ж назвою, а її вартість оновлюється.
+
+**RPC для аддонів:** інші аддони можуть використовувати OAuth і Helix API Twitch через `addons.request('twitch', …)` — `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `getChannelId`. Якщо scope не вистачає, відкриється повторна авторизація в браузері, якщо користувач уже входив раніше.
 
 **Встановлення:** Налаштування → Аддони → Встановити з папки (або перетягніть папку/zip у вікно програми).
 

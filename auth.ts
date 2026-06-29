@@ -1,5 +1,13 @@
-import { CLIENT_ID, RegenerateConfig, SCOPES } from './config';
+import { RegenerateConfig } from './config';
+import {
+  openTwitchAuthorization,
+  setReauthorizationHandler,
+} from './scopes';
 import { stopTwitchTracking } from './tracking';
+
+setReauthorizationHandler(() => {
+  openTwitchAuthorization();
+});
 
 const AUTH_SUCCESS_MESSAGE = {
   en: 'Authorization successful. You can close this window.',
@@ -8,11 +16,7 @@ const AUTH_SUCCESS_MESSAGE = {
 } as const;
 
 events.On('twitchLogin', () => {
-  const url = `https://id.twitch.tv/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=http://localhost:3000/addon/twitch/auth`;
-  const response_type = 'token';
-  const scope = SCOPES.join(' ');
-  const fullUrl = `${url}&response_type=${response_type}&scope=${scope}`;
-  api.openUrl(fullUrl);
+  openTwitchAuthorization();
 });
 
 events.On('twitchLogout', async () => {
