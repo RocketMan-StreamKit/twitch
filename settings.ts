@@ -1,4 +1,5 @@
 export type TwitchAddonSettings = {
+  sendChatViaBot: boolean;
   showModeratorActions: boolean;
   showJoinLeave: boolean;
   showPolls: boolean;
@@ -14,6 +15,7 @@ export type TwitchAddonSettings = {
 };
 
 const DEFAULTS: TwitchAddonSettings = {
+  sendChatViaBot: false,
   showModeratorActions: true,
   showJoinLeave: false,
   showPolls: true,
@@ -43,6 +45,7 @@ let cached: TwitchAddonSettings = { ...DEFAULTS };
 export const reloadSettings = async (): Promise<TwitchAddonSettings> => {
   const params = await api.config.getParams();
   cached = {
+    sendChatViaBot: params.send_chat_via_bot === true,
     showModeratorActions: params.show_moderator_actions !== false,
     showJoinLeave: params.show_join_leave === true,
     showPolls: params.show_polls !== false,

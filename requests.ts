@@ -1,5 +1,9 @@
 import { TwitchApi } from './api';
 import {
+  resolveAddonChatSender,
+  sendChatMessageWithCredentials,
+} from './chat-sender';
+import {
   ensureScopes,
   getGrantedScopes,
   getMissingScopes,
@@ -34,7 +38,9 @@ const parseProxyBody = (body: string): unknown => {
  * Reads optional scope requirements from addon RPC params.
  * @param params Request payload from the calling addon.
  */
-const readRequestedScopes = (params: AddonRequestParams | undefined): string[] => {
+const readRequestedScopes = (
+  params: AddonRequestParams | undefined
+): string[] => {
   if (!Array.isArray(params?.scopes)) {
     return [];
   }
@@ -182,17 +188,104 @@ addons.onRequest('addScopes', async ({ fromAddonId, params }) => {
 });
 
 addons.onRequest('apiGet', async ({ fromAddonId, params }) =>
-  handleTwitchApiRequest('GET', fromAddonId, params as AddonRequestParams | undefined)
+  handleTwitchApiRequest(
+    'GET',
+    fromAddonId,
+    params as AddonRequestParams | undefined
+  )
 );
 
 addons.onRequest('apiPost', async ({ fromAddonId, params }) =>
-  handleTwitchApiRequest('POST', fromAddonId, params as AddonRequestParams | undefined)
+  handleTwitchApiRequest(
+    'POST',
+    fromAddonId,
+    params as AddonRequestParams | undefined
+  )
 );
 
 addons.onRequest('apiPut', async ({ fromAddonId, params }) =>
-  handleTwitchApiRequest('PUT', fromAddonId, params as AddonRequestParams | undefined)
+  handleTwitchApiRequest(
+    'PUT',
+    fromAddonId,
+    params as AddonRequestParams | undefined
+  )
 );
 
 addons.onRequest('apiDelete', async ({ fromAddonId, params }) =>
-  handleTwitchApiRequest('DELETE', fromAddonId, params as AddonRequestParams | undefined)
+  handleTwitchApiRequest(
+    'DELETE',
+    fromAddonId,
+    params as AddonRequestParams | undefined
+  )
 );
+
+type SendChatMessageParams = {
+  message?: string;
+};
+
+/**
+ * Sends a chat message to the authorized broadcaster channel.
+ * Uses the bot account when configured, otherwise the main account.
+ * @example
+ * await addons.request('twitch', 'sendChatMessage', { message: 'Hello!' });
+ */
+addons.onRequest('sendChatMessage', async ({ fromAddonId, params }) => {
+  const requestParams = params as SendChatMessageParams | undefined;
+  const message =
+    typeof requestParams?.message === 'string'
+      ? requestParams.message.trim()
+      : '';
+  if (!message) {
+    return {
+      success: false,
+      message: 'Missing message parameter',
+      fromAddonId,
+    };
+  }
+
+  if (!TwitchApi.accessToken) {
+    return {
+      success: false,
+      message: 'Twitch is not authorized',
+      fromAddonId,
+    };
+  }
+
+  const broadcaster = await TwitchApi.GetMe();
+  if (!broadcaster?.id) {
+    return {
+      success: false,
+      message: 'Twitch channel is unavailable',
+      fromAddonId,
+    };
+  }
+
+  const credentials = await resolveAddonChatSender();
+  if (!credentials) {
+    return {
+      success: false,
+      message: 'Twitch chat sender is unavailable',
+      fromAddonId,
+    };
+  }
+
+  const sent = await sendChatMessageWithCredentials(
+    message,
+    credentials,
+    broadcaster.id
+  );
+  if (!sent) {
+    return {
+      success: false,
+      message: 'Twitch chat message was not sent',
+      fromAddonId,
+    };
+  }
+
+  return {
+    success: true,
+    senderId: credentials.senderId,
+    usedBotAccount: credentials.accessToken === TwitchApi.botAccessToken,
+    fromAddonId,
+  };
+});

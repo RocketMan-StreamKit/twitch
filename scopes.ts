@@ -23,6 +23,9 @@ export const SCOPES = [
   'moderator:read:shoutouts',
 ] as const;
 
+/** OAuth scopes required for the optional bot account (chat send only). */
+export const BOT_SCOPES = ['user:write:chat'] as const;
+
 const CONFIG_KEY = 'addon_requested_scopes';
 const SCOPE_PATTERN = /^[a-z0-9:_-]+$/i;
 
@@ -158,7 +161,7 @@ export const requestReauthorizationIfNeeded = (
 };
 
 /**
- * Builds the implicit-grant Twitch OAuth URL for the current required scope list.
+ * Builds the implicit-grant Twitch OAuth URL for the main account.
  */
 export const buildTwitchAuthorizationUrl = (): string => {
   const baseUrl =
@@ -166,15 +169,37 @@ export const buildTwitchAuthorizationUrl = (): string => {
     `?client_id=${CLIENT_ID}` +
     '&redirect_uri=http://localhost:3000/addon/twitch/auth' +
     '&response_type=token' +
+    '&state=main' +
     `&scope=${encodeURIComponent(getRequiredScopes().join(' '))}`;
   return baseUrl;
 };
 
 /**
- * Opens Twitch OAuth in the system browser for the current required scope list.
+ * Builds the implicit-grant Twitch OAuth URL for the optional bot account.
+ */
+export const buildTwitchBotAuthorizationUrl = (): string => {
+  const baseUrl =
+    'https://id.twitch.tv/oauth2/authorize' +
+    `?client_id=${CLIENT_ID}` +
+    '&redirect_uri=http://localhost:3000/addon/twitch/auth' +
+    '&response_type=token' +
+    '&state=bot' +
+    `&scope=${encodeURIComponent(BOT_SCOPES.join(' '))}`;
+  return baseUrl;
+};
+
+/**
+ * Opens Twitch OAuth in the system browser for the main account.
  */
 export const openTwitchAuthorization = (): void => {
   api.openUrl(buildTwitchAuthorizationUrl());
+};
+
+/**
+ * Opens Twitch OAuth in the system browser for the bot account.
+ */
+export const openTwitchBotAuthorization = (): void => {
+  api.openUrl(buildTwitchBotAuthorizationUrl());
 };
 
 /**

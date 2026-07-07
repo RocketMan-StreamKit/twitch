@@ -1,5 +1,7 @@
 import { TwitchApi } from './api';
 import {
+  buildTwitchAuthorizationUrl,
+  buildTwitchBotAuthorizationUrl,
   getMissingScopes,
   getRequiredScopes,
   loadPersistedScopeRequests,
@@ -31,15 +33,56 @@ const formatLogoutLabel = (login: string) => ({
 });
 
 /**
+ * Builds localized auth URL field labels for copy-paste OAuth links.
+ */
+const authUrlField = (
+  key: string,
+  labels: { en: string; ru: string; uk: string }
+): AddonConfigSchema[number] => ({
+  key,
+  type: 'text',
+  default: '',
+  editor: {
+    label: labels,
+    description: {
+      en: 'Copy this link and open it in a browser to authorize',
+      ru: 'Скопируйте ссылку и откройте в браузере для авторизации',
+      uk: 'Скопіюйте посилання та відкрийте в браузері для авторизації',
+    },
+  },
+});
+
+/**
  * Builds addon settings schema fields for the current auth state.
- * @param access_token Stored OAuth access token, if any.
- * @param login Authorized Twitch login shown on the logout button.
+ * @param access_token Stored main OAuth access token, if any.
+ * @param login Authorized main Twitch login shown on the logout button.
+ * @param bot_access_token Stored bot OAuth access token, if any.
+ * @param botLogin Authorized bot Twitch login shown on the bot logout button.
  */
 const buildConfigFields = (
   access_token: string,
-  login?: string
+  login?: string,
+  bot_access_token?: string,
+  botLogin?: string
 ): AddonConfigSchema => {
   const chatSettings: AddonConfigSchema = [
+    {
+      key: 'send_chat_via_bot',
+      type: 'boolean',
+      default: false,
+      editor: {
+        label: {
+          en: 'Send chat messages via bot account',
+          ru: 'Отправлять сообщения в чат через аккаунт бота',
+          uk: 'Надсилати повідомлення в чат через акаунт бота',
+        },
+        description: {
+          en: 'Uses the bot account when configured; otherwise the main account',
+          ru: 'Использует аккаунт бота, если он настроен; иначе основной аккаунт',
+          uk: 'Використовує акаунт бота, якщо він налаштований; інакше основний акаунт',
+        },
+      },
+    },
     {
       key: 'show_moderator_actions',
       type: 'boolean',
@@ -186,55 +229,138 @@ const buildConfigFields = (
     },
   ];
 
-  return [
-  {
-    key: 'access_token',
-    type: 'text',
-    default: '',
-  },
-  {
-    key: 'last_update',
-    type: 'number',
-    default: 0,
-  },
-  {
-    key: 'addon_requested_scopes',
-    type: 'object',
-    default: {},
-  },
-  ...(access_token ? chatSettings : []),
-  access_token
-    ? {
-        type: 'button',
-        key: 'logout',
-        event: 'twitchLogout',
-        editor: {
-          label: login
-            ? formatLogoutLabel(login)
-            : { en: 'Logout', ru: 'Выйти', uk: 'Вийти' },
-        },
-      }
-    : {
-        type: 'button',
-        key: 'test',
-        event: 'twitchLogin',
-        editor: {
-          label: {
-            en: 'Login via Twitch',
-            ru: 'Войти через Twitch',
-            uk: 'Войти через Twitch',
+  const mainAccountFields: AddonConfigSchema = [
+    authUrlField('auth_url', {
+      en: 'Main account authorization link',
+      ru: 'Ссылка для авторизации основной учётки',
+      uk: 'Посилання для авторизації основного акаунта',
+    }),
+    access_token
+      ? {
+          type: 'button',
+          key: 'logout',
+          event: 'twitchLogout',
+          editor: {
+            label: login
+              ? formatLogoutLabel(login)
+              : { en: 'Logout', ru: 'Выйти', uk: 'Вийти' },
+          },
+        }
+      : {
+          type: 'button',
+          key: 'test',
+          event: 'twitchLogin',
+          editor: {
+            label: {
+              en: 'Login via Twitch',
+              ru: 'Войти через Twitch',
+              uk: 'Войти через Twitch',
+            },
           },
         },
-      },
-];
+  ];
+
+  const botAccountFields: AddonConfigSchema = [
+    authUrlField('bot_auth_url', {
+      en: 'Bot account authorization link',
+      ru: 'Ссылка для авторизации учётки бота',
+      uk: 'Посилання для авторизації акаунта бота',
+    }),
+    bot_access_token
+      ? {
+          type: 'button',
+          key: 'bot_logout',
+          event: 'twitchBotLogout',
+          editor: {
+            label: botLogin
+              ? formatLogoutLabel(botLogin)
+              : {
+                  en: 'Logout bot',
+                  ru: 'Выйти (бот)',
+                  uk: 'Вийти (бот)',
+                },
+          },
+        }
+      : {
+          type: 'button',
+          key: 'bot_login',
+          event: 'twitchBotLogin',
+          editor: {
+            label: {
+              en: 'Login bot via Twitch',
+              ru: 'Войти ботом через Twitch',
+              uk: 'Увійти ботом через Twitch',
+            },
+          },
+        },
+  ];
+
+  return [
+    {
+      key: 'access_token',
+      type: 'text',
+      default: '',
+    },
+    {
+      key: 'bot_access_token',
+      type: 'text',
+      default: '',
+    },
+    {
+      key: 'last_update',
+      type: 'number',
+      default: 0,
+    },
+    {
+      key: 'addon_requested_scopes',
+      type: 'object',
+      default: {},
+    },
+    ...mainAccountFields,
+    ...botAccountFields,
+    ...(access_token ? chatSettings : []),
+  ];
 };
 
 export const RegenerateConfig = () => {
   void api.config.getParams().then(async params => {
     const access_token = params.access_token;
+    const bot_access_token =
+      typeof params.bot_access_token === 'string'
+        ? params.bot_access_token
+        : '';
     TwitchApi.accessToken = access_token;
+    TwitchApi.botAccessToken = bot_access_token || null;
     await loadPersistedScopeRequests();
     setHadAuthorization(Boolean(access_token));
+
+    const authUrl = buildTwitchAuthorizationUrl();
+    const botAuthUrl = buildTwitchBotAuthorizationUrl();
+    await api.config.updateParams({
+      auth_url: authUrl,
+      bot_auth_url: botAuthUrl,
+    });
+
+    let botLogin: string | undefined;
+    let activeBotToken = bot_access_token;
+    if (bot_access_token) {
+      const botValidation =
+        await TwitchApi.fetchTokenValidation(bot_access_token);
+      if (botValidation.status !== 'valid') {
+        await api.config.updateParams({ bot_access_token: '' });
+        TwitchApi.botAccessToken = null;
+        activeBotToken = '';
+      } else {
+        const botUser = await TwitchApi.GetMe(bot_access_token);
+        if (!botUser) {
+          await api.config.updateParams({ bot_access_token: '' });
+          TwitchApi.botAccessToken = null;
+          activeBotToken = '';
+        } else {
+          botLogin = botUser.login;
+        }
+      }
+    }
 
     if (TwitchApi.accessToken) {
       const validation = await TwitchApi.fetchTokenValidation();
@@ -256,11 +382,15 @@ export const RegenerateConfig = () => {
       }
 
       startTwitchTracking();
-      GenerateConfig(buildConfigFields(access_token, user.login));
+      GenerateConfig(
+        buildConfigFields(access_token, user.login, activeBotToken, botLogin)
+      );
       return;
     }
 
     stopTwitchTracking();
-    GenerateConfig(buildConfigFields(access_token));
+    GenerateConfig(
+      buildConfigFields(access_token, undefined, activeBotToken, botLogin)
+    );
   });
 };

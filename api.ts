@@ -56,31 +56,40 @@ export type TwitchChatter = {
 
 export const TwitchApi = new (class {
   accessToken: string | null = null;
+  botAccessToken: string | null = null;
 
-  private authHeaders() {
+  /**
+   * Builds Helix request headers for the given OAuth access token.
+   * @param accessToken OAuth access token; falls back to the main account token.
+   */
+  private authHeaders(accessToken?: string | null) {
+    const token = accessToken ?? this.accessToken;
     return {
-      Authorization: `Bearer ${this.accessToken}`,
+      Authorization: `Bearer ${token}`,
       'Client-ID': CLIENT_ID,
       'Content-Type': 'application/json',
     };
   }
 
   /**
-   * Validates the stored token and returns granted scopes when the token is valid.
+   * Validates an OAuth token and returns granted scopes when the token is valid.
+   * @param accessToken Token to validate; defaults to the main account token.
    */
-  async fetchTokenValidation(): Promise<
+  async fetchTokenValidation(
+    accessToken?: string | null
+  ): Promise<
     | { status: 'valid'; scopes: string[] }
     | { status: 'invalid'; message?: string }
   > {
-    const accessToken = this.accessToken;
-    if (!accessToken) {
+    const token = accessToken ?? this.accessToken;
+    if (!token) {
       return { status: 'invalid', message: 'No access token' };
     }
 
     try {
       const response = await network.request.get(
         'https://id.twitch.tv/oauth2/validate',
-        { Authorization: `OAuth ${accessToken}` }
+        { Authorization: `OAuth ${token}` }
       );
       const data = JSON.parse(response) as {
         scopes?: string[];
@@ -158,7 +167,8 @@ export const TwitchApi = new (class {
       return {
         ok: false,
         body: '',
-        message: 'Only https://api.twitch.tv and https://id.twitch.tv URLs are allowed',
+        message:
+          'Only https://api.twitch.tv and https://id.twitch.tv URLs are allowed',
       };
     }
 
@@ -310,9 +320,13 @@ export const TwitchApi = new (class {
     }
   }
 
-  async GetMe(): Promise<TwitchBroadcaster | null> {
-    const accessToken = this.accessToken;
-    if (!accessToken) {
+  /**
+   * Resolves the Twitch user for the given OAuth token.
+   * @param accessToken OAuth access token; defaults to the main account token.
+   */
+  async GetMe(accessToken?: string | null): Promise<TwitchBroadcaster | null> {
+    const token = accessToken ?? this.accessToken;
+    if (!token) {
       return null;
     }
 
@@ -320,7 +334,7 @@ export const TwitchApi = new (class {
       const response = await network.request.get(
         'https://api.twitch.tv/helix/users',
         {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
           'Client-ID': CLIENT_ID,
         }
       );
@@ -488,13 +502,21 @@ export const TwitchApi = new (class {
     }
   }
 
+  /**
+   * Sends a chat message through the Helix Chat API.
+   * @param message Message text to send.
+   * @param broadcasterId Twitch user id of the channel owner.
+   * @param senderId Twitch user id of the sending account.
+   * @param accessToken OAuth token of the sending account; defaults to the main token.
+   */
   async SendChatMessage(
     message: string,
     broadcasterId: string,
-    senderId: string
+    senderId: string,
+    accessToken?: string | null
   ): Promise<boolean> {
-    const accessToken = this.accessToken;
-    if (!accessToken || !message.trim() || !broadcasterId || !senderId) {
+    const token = accessToken ?? this.accessToken;
+    if (!token || !message.trim() || !broadcasterId || !senderId) {
       return false;
     }
 
@@ -506,7 +528,7 @@ export const TwitchApi = new (class {
           sender_id: senderId,
           message: message.trim(),
         },
-        this.authHeaders()
+        this.authHeaders(token)
       );
       const parsed = JSON.parse(response) as {
         data?: { is_sent?: boolean; drop_reason?: { message?: string } }[];

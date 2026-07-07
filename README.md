@@ -12,7 +12,9 @@ Integration with Twitch API to display stream information, chat, viewer count in
 
 **Channel point rewards:** optional setting to delete Twitch rewards when they are removed from all triggers in the app (off by default). Generating a reward through a trigger reuses an existing reward with the same title and updates its cost.
 
-**Addon RPC:** other addons can reuse Twitch OAuth and Helix API through `addons.request('twitch', …)` — `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, and `getChannelId`. Missing scopes trigger re-authorization in the browser when the user was already logged in.
+**Addon RPC:** other addons can reuse Twitch OAuth and Helix API through `addons.request('twitch', …)` — `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `getChannelId`, and `sendChatMessage`. Missing scopes trigger re-authorization in the browser when the user was already logged in.
+
+**Bot account:** optional second Twitch login for sending chat messages (`user:write:chat` only). Other addons' `sendChatMessage` uses the bot when configured, otherwise the main account. A setting controls whether the in-app chat input uses the bot (off by default; falls back to the main account when the bot is not set up). Authorization links for both accounts can be copied from settings.
 
 **Install:** Settings → Addons → Install from folder (or drag-and-drop the folder/zip into the app window).
 
@@ -55,9 +57,12 @@ const clips = await addons.request('twitch', 'apiGet', {
   url: 'https://api.twitch.tv/helix/clips?broadcaster_id=123',
   scopes: ['clips:edit'],
 });
+
+// Send a chat message (bot account when configured, otherwise main)
+await addons.request('twitch', 'sendChatMessage', { message: 'Hello!' });
 ```
 
-Methods: `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `getChannelId`. If scopes are missing and the user was previously authorized, the Twitch addon opens OAuth in the browser automatically.
+Methods: `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `getChannelId`, `sendChatMessage`. If scopes are missing and the user was previously authorized, the Twitch addon opens OAuth in the browser automatically.
 
 ## Русский
 
@@ -69,7 +74,9 @@ Methods: `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `
 
 **Награды за баллы канала:** опциональная настройка удалять награды Twitch, когда они убраны из всех триггеров в приложении (по умолчанию выключено). При генерации награды через триггер используется существующая награда с таким же названием, а её стоимость обновляется.
 
-**RPC для аддонов:** другие аддоны могут использовать OAuth и Helix API Twitch через `addons.request('twitch', …)` — `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `getChannelId`. При нехватке scope откроется повторная авторизация в браузере, если пользователь уже входил ранее.
+**RPC для аддонов:** другие аддоны могут использовать OAuth и Helix API Twitch через `addons.request('twitch', …)` — `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `getChannelId`, `sendChatMessage`. При нехватке scope откроется повторная авторизация в браузере, если пользователь уже входил ранее.
+
+**Аккаунт бота:** опциональный второй вход в Twitch только для отправки сообщений в чат (`user:write:chat`). RPC `sendChatMessage` использует бота, если он настроен, иначе основную учётку. Настройка управляет отправкой из окна чата приложения (по умолчанию выкл.; без бота — основная учётка). Ссылки для авторизации обеих учёток можно скопировать в настройках.
 
 **Установка:** Настройки → Аддоны → Установить из папки (или перетащите папку/zip в окно приложения).
 
@@ -108,7 +115,9 @@ npm run build
 
 **Нагороди за бали каналу:** опціональне налаштування видаляти нагороди Twitch, коли їх прибрано з усіх тригерів у програмі (за замовчуванням вимкнено). Під час генерації нагороди через тригер використовується існуюча нагорода з такою ж назвою, а її вартість оновлюється.
 
-**RPC для аддонів:** інші аддони можуть використовувати OAuth і Helix API Twitch через `addons.request('twitch', …)` — `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `getChannelId`. Якщо scope не вистачає, відкриється повторна авторизація в браузері, якщо користувач уже входив раніше.
+**RPC для аддонів:** інші аддони можуть використовувати OAuth і Helix API Twitch через `addons.request('twitch', …)` — `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `getChannelId`, `sendChatMessage`. Якщо scope не вистачає, відкриється повторна авторизація в браузері, якщо користувач уже входив раніше.
+
+**Акаунт бота:** опціональний другий вхід у Twitch лише для надсилання повідомлень у чат (`user:write:chat`). RPC `sendChatMessage` використовує бота, якщо він налаштований, інакше основний акаунт. Налаштування керує надсиланням з вікна чату програми (за замовчуванням вимкнено; без бота — основний акаунт). Посилання для авторизації обох акаунтів можна скопіювати в налаштуваннях.
 
 **Встановлення:** Налаштування → Аддони → Встановити з папки (або перетягніть папку/zip у вікно програми).
 

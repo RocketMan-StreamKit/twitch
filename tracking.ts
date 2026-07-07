@@ -1,4 +1,8 @@
 import { TwitchApi } from './api';
+import {
+  resolveDashboardChatSender,
+  sendChatMessageWithCredentials,
+} from './chat-sender';
 import { startChatMonitor, stopChatMonitor } from './chat-monitor';
 import { PLATFORM } from './constants';
 import { TwitchEventSubClient } from './eventsub';
@@ -69,12 +73,16 @@ export const startTwitchTracking = async () => {
     await refreshViewerCount(user.id);
 
     void dashboard.onChatSend(async ({ text }) => {
-      if (!TwitchApi.accessToken || !broadcasterId) {
+      if (!broadcasterId) {
         throw new Error('Twitch is not authorized');
       }
-      const sent = await TwitchApi.SendChatMessage(
+      const credentials = await resolveDashboardChatSender();
+      if (!credentials) {
+        throw new Error('Twitch is not authorized');
+      }
+      const sent = await sendChatMessageWithCredentials(
         text,
-        broadcasterId,
+        credentials,
         broadcasterId
       );
       if (!sent) {
