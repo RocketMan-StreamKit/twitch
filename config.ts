@@ -228,6 +228,11 @@ const buildConfigFields = (
           ru: 'Удалять награды при удалении триггеров',
           uk: 'Видаляти нагороди при видаленні тригерів',
         },
+        description: {
+          en: 'The reward is deleted automatically when you remove a trigger that uses it, if it is not referenced in any other trigger',
+          ru: 'Награда будет удаляться автоматически, если удалить триггер с ней, и в других триггерах эта награда не упоминается',
+          uk: 'Нагорода буде видалятися автоматично, якщо видалити тригер із нею, і в інших тригерах ця награда не згадується',
+        },
       },
     },
     {
