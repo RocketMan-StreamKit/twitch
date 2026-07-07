@@ -1,4 +1,5 @@
 import { RegenerateConfig } from './config';
+import { patchParams } from './params';
 import {
   openTwitchAuthorization,
   openTwitchBotAuthorization,
@@ -26,12 +27,12 @@ events.On('twitchBotLogin', () => {
 
 events.On('twitchLogout', async () => {
   stopTwitchTracking();
-  await api.config.updateParams({ access_token: '' });
+  await patchParams({ access_token: '' });
   RegenerateConfig();
 });
 
 events.On('twitchBotLogout', async () => {
-  await api.config.updateParams({ bot_access_token: '' });
+  await patchParams({ bot_access_token: '' });
   RegenerateConfig();
 });
 
@@ -56,10 +57,16 @@ events.On('authCallback', ({ query }) => {
     return html;
   }
 
-  const isBotAuth = query.state === 'bot';
+  const state =
+    typeof query.state === 'string'
+      ? query.state
+      : Array.isArray(query.state)
+        ? String(query.state[0] ?? '')
+        : '';
+  const isBotAuth = state === 'bot';
   const tokenKey = isBotAuth ? 'bot_access_token' : 'access_token';
 
-  void api.config.updateParams({ [tokenKey]: query.access_token }).then(() => {
+  void patchParams({ [tokenKey]: query.access_token }).then(() => {
     RegenerateConfig();
   });
 

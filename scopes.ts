@@ -1,4 +1,5 @@
 import { CLIENT_ID } from './constants';
+import { patchParams } from './params';
 
 /** Scopes required by the Twitch addon itself (EventSub, IRC chat, rewards). */
 export const SCOPES = [
@@ -112,7 +113,7 @@ export const loadPersistedScopeRequests = async (): Promise<void> => {
  * Persists addon scope requests to config storage.
  */
 const persistScopeRequests = async (): Promise<void> => {
-  await api.config.updateParams({ [CONFIG_KEY]: addonRequestedScopes });
+  await patchParams({ [CONFIG_KEY]: addonRequestedScopes });
 };
 
 /**

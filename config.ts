@@ -1,4 +1,5 @@
 import { TwitchApi } from './api';
+import { patchParams } from './params';
 import {
   buildTwitchAuthorizationUrl,
   buildTwitchBotAuthorizationUrl,
@@ -13,7 +14,7 @@ import { startTwitchTracking, stopTwitchTracking } from './tracking';
 
 const clearTwitchAuth = () => {
   stopTwitchTracking();
-  return api.config.updateParams({ access_token: '' }).then(() => {
+  return patchParams({ access_token: '' }).then(() => {
     TwitchApi.accessToken = null;
     RegenerateConfig();
   });
@@ -30,6 +31,15 @@ const formatLogoutLabel = (login: string) => ({
   en: `Logout (${login})`,
   ru: `Выйти (${login})`,
   uk: `Вийти (${login})`,
+});
+
+/**
+ * Builds localized bot disconnect button labels with the authorized Twitch login in parentheses.
+ */
+const formatBotDisconnectLabel = (login: string) => ({
+  en: `Disconnect bot account (${login})`,
+  ru: `Отключить аккаунт бота (${login})`,
+  uk: `Відключити акаунт бота (${login})`,
 });
 
 /**
@@ -273,11 +283,11 @@ const buildConfigFields = (
           event: 'twitchBotLogout',
           editor: {
             label: botLogin
-              ? formatLogoutLabel(botLogin)
+              ? formatBotDisconnectLabel(botLogin)
               : {
-                  en: 'Logout bot',
-                  ru: 'Выйти (бот)',
-                  uk: 'Вийти (бот)',
+                  en: 'Disconnect bot account',
+                  ru: 'Отключить аккаунт бота',
+                  uk: 'Відключити акаунт бота',
                 },
           },
         }
@@ -336,7 +346,7 @@ export const RegenerateConfig = () => {
 
     const authUrl = buildTwitchAuthorizationUrl();
     const botAuthUrl = buildTwitchBotAuthorizationUrl();
-    await api.config.updateParams({
+    await patchParams({
       auth_url: authUrl,
       bot_auth_url: botAuthUrl,
     });
@@ -347,13 +357,13 @@ export const RegenerateConfig = () => {
       const botValidation =
         await TwitchApi.fetchTokenValidation(bot_access_token);
       if (botValidation.status !== 'valid') {
-        await api.config.updateParams({ bot_access_token: '' });
+        await patchParams({ bot_access_token: '' });
         TwitchApi.botAccessToken = null;
         activeBotToken = '';
       } else {
         const botUser = await TwitchApi.GetMe(bot_access_token);
         if (!botUser) {
-          await api.config.updateParams({ bot_access_token: '' });
+          await patchParams({ bot_access_token: '' });
           TwitchApi.botAccessToken = null;
           activeBotToken = '';
         } else {
