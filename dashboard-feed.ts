@@ -19,6 +19,11 @@ export const pushFollow = async (user: TwitchEventUser) => {
       type: 'follow',
       platform: PLATFORM,
       from: profile.id,
+      message: {
+        en: 'New follower',
+        ru: 'Новый фолловер',
+        uk: 'Новий фоловер',
+      },
     },
     profile,
     { trigger: { type: 'follow' } }
@@ -98,23 +103,102 @@ export const pushSubGift = async (
   );
 };
 
-export const pushSubRenewal = async (
+/**
+ * Pushes a single dashboard line for a one-to-one gifted subscription.
+ * @param gifter Twitch gifter profile fields.
+ * @param recipient Twitch recipient profile fields.
+ * @param tier Subscription tier code.
+ * @example
+ * await pushCombinedGiftSub(gifter, recipient, '1000');
+ */
+export const pushCombinedGiftSub = async (
+  gifter: TwitchEventUser,
+  recipient: TwitchEventUser,
+  tier: string
+) => {
+  const profile = await buildTwitchProfile(gifter);
+  const recipientName = recipient.user_name || recipient.user_login;
+  const tierLabel = formatTier(tier);
+  return dashboard.addRecord(
+    {
+      type: 'custom',
+      platform: PLATFORM,
+      from: profile.id,
+      message: `Gifted sub to ${recipientName} (${tierLabel})`,
+      attach: [
+        { type: 'tier', value: tier },
+        { type: 'gift_total', value: '1' },
+        { type: 'recipient', value: recipient.user_id },
+      ],
+    },
+    profile,
+    {
+      triggers: [
+        { type: 'subgift', value: tier },
+        { type: 'subgift', key: 'total', value: 1 },
+      ],
+    }
+  );
+};
+
+/**
+ * Pushes a resub line from `channel.subscribe` when no separate resub message event arrives.
+ * @param user Twitch subscriber profile fields.
+ * @param tier Subscription tier code.
+ * @param cumulativeMonths Total subscribed months.
+ * @example
+ * await pushResubSubscribe(user, '1000', 70);
+ */
+export const pushResubSubscribe = async (
   user: TwitchEventUser,
-  cumulativeMonths: number,
-  text?: string
+  tier: string,
+  cumulativeMonths: number
 ) => {
   const profile = await buildTwitchProfile(user);
   const months = cumulativeMonths > 0 ? `${cumulativeMonths} months` : 'resub';
+  const tierLabel = formatTier(tier);
+  return dashboard.addRecord(
+    {
+      type: 'custom',
+      platform: PLATFORM,
+      from: profile.id,
+      message: `Resub — ${months} (${tierLabel})`,
+      attach: [
+        { type: 'months', value: String(cumulativeMonths) },
+        { type: 'tier', value: tier },
+      ],
+    },
+    profile
+  );
+};
+
+export const pushSubRenewal = async (
+  user: TwitchEventUser,
+  cumulativeMonths: number,
+  text?: string,
+  tier?: string
+) => {
+  const profile = await buildTwitchProfile(user);
+  const months = cumulativeMonths > 0 ? `${cumulativeMonths} months` : 'resub';
+  const tierLabel = tier ? formatTier(tier) : undefined;
   const message = text?.trim()
-    ? `Resub (${months}): ${text}`
-    : `Resub — ${months}`;
+    ? tierLabel
+      ? `Resub (${months}, ${tierLabel}): ${text}`
+      : `Resub (${months}): ${text}`
+    : tierLabel
+      ? `Resub — ${months} (${tierLabel})`
+      : `Resub — ${months}`;
+  const attach = [{ type: 'months', value: String(cumulativeMonths) }];
+  if (tier) {
+    attach.push({ type: 'tier', value: tier });
+  }
   return dashboard.addRecord(
     {
       type: 'custom',
       platform: PLATFORM,
       from: profile.id,
       message,
-      attach: [{ type: 'months', value: String(cumulativeMonths) }],
+      attach,
     },
     profile
   );

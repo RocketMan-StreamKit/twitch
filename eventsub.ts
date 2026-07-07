@@ -18,11 +18,13 @@ import {
   pushModerationEvent,
   pushPollBegin,
   pushPollEnd,
-  pushSubGift,
-  pushSubRenewal,
-  pushSubscribe,
   TwitchEventUser,
 } from './dashboard-feed';
+import {
+  handleSubGiftNotification,
+  handleSubRenewalNotification,
+  handleSubscribeNotification,
+} from './sub-event-coalesce';
 import { buildModerationFeedEvent, buildPollFeedEvent } from './moderation';
 import { getSettings, reloadSettings } from './settings';
 import { notifyConnectionStatus } from './status-notify';
@@ -240,9 +242,16 @@ export class TwitchEventSubClient {
         break;
       case 'channel.subscribe':
         if (isEventUser(event) && typeof event.tier === 'string') {
-          pushSubscribe(event, event.tier, Boolean(event.is_gift)).catch(
-            error => console.error(error)
-          );
+          const cumulativeMonths =
+            typeof event.cumulative_months === 'number'
+              ? event.cumulative_months
+              : 0;
+          handleSubscribeNotification(
+            event,
+            event.tier,
+            cumulativeMonths,
+            Boolean(event.is_gift)
+          ).catch(error => console.error(error));
         }
         break;
       case 'channel.subscription.gift':
@@ -251,13 +260,13 @@ export class TwitchEventSubClient {
           typeof event.total === 'number' &&
           typeof event.tier === 'string'
         ) {
-          pushSubGift(event, event.total, event.tier).catch(error =>
-            console.error(error)
+          handleSubGiftNotification(event, event.total, event.tier).catch(
+            error => console.error(error)
           );
         }
         break;
       case 'channel.subscription.message':
-        if (isEventUser(event)) {
+        if (isEventUser(event) && typeof event.tier === 'string') {
           const text =
             event.message &&
             typeof event.message === 'object' &&
@@ -268,8 +277,8 @@ export class TwitchEventSubClient {
             typeof event.cumulative_months === 'number'
               ? event.cumulative_months
               : 0;
-          pushSubRenewal(event, months, text).catch(error =>
-            console.error(error)
+          handleSubRenewalNotification(event, months, text, event.tier).catch(
+            error => console.error(error)
           );
         }
         break;
