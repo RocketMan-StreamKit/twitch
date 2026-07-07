@@ -9,6 +9,7 @@ export type TwitchAddonSettings = {
   showWatchStreak: boolean;
   watchStreakMinCount: number;
   showRewardRedemption: boolean;
+  speakHighlightedMessages: boolean;
   deleteUnusedRewards: boolean;
   showFirstUserMessage: boolean;
   showChatSubscriptions: boolean;
@@ -25,6 +26,7 @@ const DEFAULTS: TwitchAddonSettings = {
   showWatchStreak: true,
   watchStreakMinCount: 3,
   showRewardRedemption: true,
+  speakHighlightedMessages: false,
   deleteUnusedRewards: false,
   showFirstUserMessage: true,
   showChatSubscriptions: true,
@@ -61,6 +63,7 @@ export const reloadSettings = async (): Promise<TwitchAddonSettings> => {
       DEFAULTS.watchStreakMinCount
     ),
     showRewardRedemption: params.show_reward_redemption !== false,
+    speakHighlightedMessages: params.speak_highlighted_messages === true,
     deleteUnusedRewards: params.delete_unused_rewards === true,
     showFirstUserMessage: params.show_first_user_message !== false,
     showChatSubscriptions: params.show_chat_subscriptions !== false,

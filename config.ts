@@ -202,6 +202,23 @@ const buildConfigFields = (
       },
     },
     {
+      key: 'speak_highlighted_messages',
+      type: 'boolean',
+      default: false,
+      editor: {
+        label: {
+          en: 'Speak highlighted messages via TTS',
+          ru: 'Озвучивать выделенные сообщения через TTS',
+          uk: 'Озвучувати виділені повідомлення через TTS',
+        },
+        description: {
+          en: 'Uses the TTS engine configured in StreamKit+ settings',
+          ru: 'Использует движок TTS из настроек StreamKit+',
+          uk: 'Використовує рушій TTS із налаштувань StreamKit+',
+        },
+      },
+    },
+    {
       key: 'delete_unused_rewards',
       type: 'boolean',
       default: false,

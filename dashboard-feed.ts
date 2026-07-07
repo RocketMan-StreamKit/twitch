@@ -5,6 +5,7 @@ import {
   resolveUserAvatar,
   type TwitchEventUser,
 } from './dashboard-user';
+import { speakHighlightedMessage } from './highlighted-tts';
 import { getSettings } from './settings';
 
 export type { TwitchEventUser } from './dashboard-user';
@@ -777,6 +778,9 @@ export const pushRewardRedemptionChatNotification = async (event: {
     kind === 'highlighted_message'
       ? formatHighlightedMessage(input)
       : formatRewardMessage(event.rewardTitle, event.rewardCost, input);
+  if (kind === 'highlighted_message') {
+    void speakHighlightedMessage(input ?? '');
+  }
   return pushChatMessage(
     event.user_login,
     event.user_name,

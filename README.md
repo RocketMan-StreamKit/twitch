@@ -8,7 +8,7 @@
 
 Integration with Twitch API to display stream information, chat, viewer count in the status bar, and more.
 
-**Chat notifications:** configurable framed chat events — raids, shoutouts, watch streaks, reward redemptions, first-time chatter messages, and subscription notices (same style as announcements).
+**Chat notifications:** configurable framed chat events — raids, shoutouts, watch streaks, reward redemptions, first-time chatter messages, and subscription notices (same style as announcements). Optional TTS for highlighted channel-point messages (off by default; uses the TTS engine from StreamKit+ settings).
 
 **Channel point rewards:** optional setting to delete Twitch rewards when they are removed from all triggers in the app (off by default). Generating a reward through a trigger reuses an existing reward with the same title and updates its cost.
 
@@ -41,7 +41,7 @@ Install the `dist/` folder contents (or the release zip) via StreamKit+ settings
 | Field | Value |
 | --- | --- |
 | Type | `platform.streaming` |
-| Permissions | NETWORK_REQUEST, NETWORK_WEBSOCKET, WEB_END_POINTS, DASHBOARD_EVENTS, DASHBOARD_CHAT, STATUS, NOTIFY |
+| Permissions | NETWORK_REQUEST, NETWORK_WEBSOCKET, WEB_END_POINTS, DASHBOARD_EVENTS, DASHBOARD_CHAT, STATUS, NOTIFY, TTS |
 
 **Addon-to-addon API** (`depends_on: ["twitch"]` recommended):
 
@@ -70,7 +70,7 @@ Methods: `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `
 
 Интеграция с Twitch API для отображения информации о стриме, чата, онлайна в строке состояния и многого другого.
 
-**Оповещения в чате:** настраиваемые события в рамке — рейды, shoutout, watch streak, применение наград, первые сообщения зрителей и подписки (в том же стиле, что и анонсы).
+**Оповещения в чате:** настраиваемые события в рамке — рейды, shoutout, watch streak, применение наград, первые сообщения зрителей и подписки (в том же стиле, что и анонсы). Опциональное озвучивание выделенных сообщений через TTS (по умолчанию выкл.; использует движок TTS из настроек StreamKit+).
 
 **Награды за баллы канала:** опциональная настройка удалять награды Twitch, когда они убраны из всех триггеров в приложении (по умолчанию выключено). При генерации награды через триггер используется существующая награда с таким же названием, а её стоимость обновляется.
 
@@ -103,7 +103,7 @@ npm run build
 | Поле | Значение |
 | --- | --- |
 | Тип | `platform.streaming` |
-| Права | NETWORK_REQUEST, NETWORK_WEBSOCKET, WEB_END_POINTS, DASHBOARD_EVENTS, DASHBOARD_CHAT, STATUS, NOTIFY |
+| Права | NETWORK_REQUEST, NETWORK_WEBSOCKET, WEB_END_POINTS, DASHBOARD_EVENTS, DASHBOARD_CHAT, STATUS, NOTIFY, TTS |
 
 ## Українська
 
@@ -111,7 +111,7 @@ npm run build
 
 Інтеграція з Twitch API для відображення інформації про стрім, чат, онлайну в рядку стану та багато іншого.
 
-**Сповіщення в чаті:** налаштовувані події в рамці — рейди, shoutout, watch streak, застосування нагород, перші повідомлення глядачів і підписки (у тому ж стилі, що й анонси).
+**Сповіщення в чаті:** налаштовувані події в рамці — рейди, shoutout, watch streak, застосування нагород, перші повідомлення глядачів і підписки (у тому ж стилі, що й анонси). Опціональне озвучування виділених повідомлень через TTS (за замовчуванням вимкнено; використовує рушій TTS із налаштувань StreamKit+).
 
 **Нагороди за бали каналу:** опціональне налаштування видаляти нагороди Twitch, коли їх прибрано з усіх тригерів у програмі (за замовчуванням вимкнено). Під час генерації нагороди через тригер використовується існуюча нагорода з такою ж назвою, а її вартість оновлюється.
 
@@ -144,5 +144,5 @@ npm run build
 | Поле | Значення |
 | --- | --- |
 | Тип | `platform.streaming` |
-| Права | NETWORK_REQUEST, NETWORK_WEBSOCKET, WEB_END_POINTS, DASHBOARD_EVENTS, DASHBOARD_CHAT, STATUS, NOTIFY |
+| Права | NETWORK_REQUEST, NETWORK_WEBSOCKET, WEB_END_POINTS, DASHBOARD_EVENTS, DASHBOARD_CHAT, STATUS, NOTIFY, TTS |
 
