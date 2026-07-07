@@ -10,6 +10,198 @@ import { getSettings } from './settings';
 export type { TwitchEventUser } from './dashboard-user';
 export { buildTwitchProfile, toDashboardUser } from './dashboard-user';
 
+type LocalizedText = { en: string; ru?: string; uk?: string };
+
+/**
+ * Returns a localized subscription tier label.
+ * @param tier Twitch tier code (`1000`, `2000`, `3000`, `Prime`, …).
+ * @example localizedTier('1000') // { en: 'Tier 1', ru: 'Тир 1', uk: 'Тир 1' }
+ */
+const localizedTier = (tier: string): LocalizedText => {
+  if (tier === '1000') {
+    return { en: 'Tier 1', ru: 'Тир 1', uk: 'Тир 1' };
+  }
+  if (tier === '2000') {
+    return { en: 'Tier 2', ru: 'Тир 2', uk: 'Тир 2' };
+  }
+  if (tier === '3000') {
+    return { en: 'Tier 3', ru: 'Тир 3', uk: 'Тир 3' };
+  }
+  if (tier === 'Prime') {
+    return { en: 'Prime', ru: 'Prime', uk: 'Prime' };
+  }
+  return { en: tier, ru: tier, uk: tier };
+};
+
+/**
+ * Formats a Russian plural noun phrase with a numeric prefix.
+ * @param count Numeric value.
+ * @param one Nominative singular (1, 21, …).
+ * @param few Genitive singular (2–4, 22–24, …).
+ * @param many Genitive plural (0, 5–20, 25–30, …).
+ */
+const pluralRussian = (
+  count: number,
+  one: string,
+  few: string,
+  many: string
+) => {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) {
+    return `${count} ${one}`;
+  }
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
+    return `${count} ${few}`;
+  }
+  return `${count} ${many}`;
+};
+
+/**
+ * Formats a Ukrainian plural noun phrase with a numeric prefix.
+ * @param count Numeric value.
+ * @param one Nominative singular (1, 21, …).
+ * @param few Nominative plural (2–4, 22–24, …).
+ * @param many Genitive plural (0, 5–20, 25–30, …).
+ */
+const pluralUkrainian = (
+  count: number,
+  one: string,
+  few: string,
+  many: string
+) => {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) {
+    return `${count} ${one}`;
+  }
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
+    return `${count} ${few}`;
+  }
+  return `${count} ${many}`;
+};
+
+/**
+ * Returns a localized subscribed-months label for resub messages.
+ * @param months Cumulative subscribed months; `0` yields a generic resub label.
+ */
+const localizedMonths = (months: number): LocalizedText => {
+  if (months <= 0) {
+    return { en: 'resub', ru: 'ресаб', uk: 'ресаб' };
+  }
+  return {
+    en: `${months} month${months === 1 ? '' : 's'}`,
+    ru: pluralRussian(months, 'месяц', 'месяца', 'месяцев'),
+    uk: pluralUkrainian(months, 'місяць', 'місяці', 'місяців'),
+  };
+};
+
+/**
+ * Builds a localized message for bulk gifted subs.
+ * @param total Number of gifted subs.
+ * @param tier Twitch tier code.
+ */
+const localizedGiftedSubs = (total: number, tier: string): LocalizedText => {
+  const tierLabel = localizedTier(tier);
+  if (total === 1) {
+    return {
+      en: `Gifted 1 sub (${tierLabel.en})`,
+      ru: `Подарена 1 подписка (${tierLabel.ru})`,
+      uk: `Подарована 1 підписка (${tierLabel.uk})`,
+    };
+  }
+  return {
+    en: `Gifted ${total} subs (${tierLabel.en})`,
+    ru: `Подарено ${pluralRussian(total, 'подписку', 'подписки', 'подписок')} (${tierLabel.ru})`,
+    uk: `Подаровано ${pluralUkrainian(total, 'підписку', 'підписки', 'підписок')} (${tierLabel.uk})`,
+  };
+};
+
+/**
+ * Builds a localized message for a one-to-one gifted sub.
+ * @param recipientName Recipient display name.
+ * @param tier Twitch tier code.
+ */
+const localizedGiftedSubTo = (
+  recipientName: string,
+  tier: string
+): LocalizedText => {
+  const tierLabel = localizedTier(tier);
+  return {
+    en: `Gifted sub to ${recipientName} (${tierLabel.en})`,
+    ru: `Подарочная подписка для ${recipientName} (${tierLabel.ru})`,
+    uk: `Подарункова підписка для ${recipientName} (${tierLabel.uk})`,
+  };
+};
+
+/**
+ * Builds a localized gift-subscription message for the recipient.
+ * @param tier Twitch tier code.
+ */
+const localizedGiftSubscription = (tier: string): LocalizedText => {
+  const tierLabel = localizedTier(tier);
+  return {
+    en: `Gift subscription (${tierLabel.en})`,
+    ru: `Подарочная подписка (${tierLabel.ru})`,
+    uk: `Подарункова підписка (${tierLabel.uk})`,
+  };
+};
+
+/**
+ * Builds a localized resub line with months and tier.
+ * @param months Cumulative subscribed months.
+ * @param tier Twitch tier code.
+ */
+const localizedResubLine = (months: number, tier: string): LocalizedText => {
+  const monthsLabel = localizedMonths(months);
+  const tierLabel = localizedTier(tier);
+  return {
+    en: `Resub — ${monthsLabel.en} (${tierLabel.en})`,
+    ru: `Ресаб — ${monthsLabel.ru} (${tierLabel.ru})`,
+    uk: `Ресаб — ${monthsLabel.uk} (${tierLabel.uk})`,
+  };
+};
+
+/**
+ * Builds a localized resub line with months only.
+ * @param months Cumulative subscribed months.
+ */
+const localizedResubMonthsOnly = (months: number): LocalizedText => {
+  const monthsLabel = localizedMonths(months);
+  return {
+    en: `Resub — ${monthsLabel.en}`,
+    ru: `Ресаб — ${monthsLabel.ru}`,
+    uk: `Ресаб — ${monthsLabel.uk}`,
+  };
+};
+
+/**
+ * Builds a localized resub line that includes optional user message text.
+ * @param months Cumulative subscribed months.
+ * @param tier Optional Twitch tier code.
+ * @param text Resub message text from chat.
+ */
+const localizedResubWithText = (
+  months: number,
+  tier: string | undefined,
+  text: string
+): LocalizedText => {
+  const monthsLabel = localizedMonths(months);
+  if (tier) {
+    const tierLabel = localizedTier(tier);
+    return {
+      en: `Resub (${monthsLabel.en}, ${tierLabel.en}): ${text}`,
+      ru: `Ресаб (${monthsLabel.ru}, ${tierLabel.ru}): ${text}`,
+      uk: `Ресаб (${monthsLabel.uk}, ${tierLabel.uk}): ${text}`,
+    };
+  }
+  return {
+    en: `Resub (${monthsLabel.en}): ${text}`,
+    ru: `Ресаб (${monthsLabel.ru}): ${text}`,
+    uk: `Ресаб (${monthsLabel.uk}): ${text}`,
+  };
+};
+
 const userId = (id: string) => `twitch:${id}`;
 
 export const pushFollow = async (user: TwitchEventUser) => {
@@ -57,8 +249,9 @@ export const pushSubscribe = async (
   isGift?: boolean
 ) => {
   const profile = await buildTwitchProfile(user);
-  const tierLabel = formatTier(tier);
-  const message = isGift ? `Gift subscription (${tierLabel})` : tierLabel;
+  const message = isGift
+    ? localizedGiftSubscription(tier)
+    : localizedTier(tier);
   return dashboard.addRecord(
     {
       type: 'subscribe',
@@ -87,7 +280,7 @@ export const pushSubGift = async (
       type: 'custom',
       platform: PLATFORM,
       from: profile.id,
-      message: `Gifted ${total} sub${total === 1 ? '' : 's'} (${formatTier(tier)})`,
+      message: localizedGiftedSubs(total, tier),
       attach: [
         { type: 'tier', value: tier },
         { type: 'gift_total', value: String(total) },
@@ -118,13 +311,12 @@ export const pushCombinedGiftSub = async (
 ) => {
   const profile = await buildTwitchProfile(gifter);
   const recipientName = recipient.user_name || recipient.user_login;
-  const tierLabel = formatTier(tier);
   return dashboard.addRecord(
     {
       type: 'custom',
       platform: PLATFORM,
       from: profile.id,
-      message: `Gifted sub to ${recipientName} (${tierLabel})`,
+      message: localizedGiftedSubTo(recipientName, tier),
       attach: [
         { type: 'tier', value: tier },
         { type: 'gift_total', value: '1' },
@@ -155,14 +347,12 @@ export const pushResubSubscribe = async (
   cumulativeMonths: number
 ) => {
   const profile = await buildTwitchProfile(user);
-  const months = cumulativeMonths > 0 ? `${cumulativeMonths} months` : 'resub';
-  const tierLabel = formatTier(tier);
   return dashboard.addRecord(
     {
       type: 'custom',
       platform: PLATFORM,
       from: profile.id,
-      message: `Resub — ${months} (${tierLabel})`,
+      message: localizedResubLine(cumulativeMonths, tier),
       attach: [
         { type: 'months', value: String(cumulativeMonths) },
         { type: 'tier', value: tier },
@@ -179,15 +369,11 @@ export const pushSubRenewal = async (
   tier?: string
 ) => {
   const profile = await buildTwitchProfile(user);
-  const months = cumulativeMonths > 0 ? `${cumulativeMonths} months` : 'resub';
-  const tierLabel = tier ? formatTier(tier) : undefined;
   const message = text?.trim()
-    ? tierLabel
-      ? `Resub (${months}, ${tierLabel}): ${text}`
-      : `Resub (${months}): ${text}`
-    : tierLabel
-      ? `Resub — ${months} (${tierLabel})`
-      : `Resub — ${months}`;
+    ? localizedResubWithText(cumulativeMonths, tier, text.trim())
+    : tier
+      ? localizedResubLine(cumulativeMonths, tier)
+      : localizedResubMonthsOnly(cumulativeMonths);
   const attach = [{ type: 'months', value: String(cumulativeMonths) }];
   if (tier) {
     attach.push({ type: 'tier', value: tier });
@@ -324,8 +510,6 @@ const POLL_STYLE = {
   },
   icon: 'list' as const,
 };
-
-type LocalizedText = { en: string; ru?: string; uk?: string };
 
 export const twitchChatMessageId = (messageId: string) =>
   `twitch:msg:${messageId}`;
@@ -1255,20 +1439,4 @@ const formatAutomaticRewardType = (type: string) => {
     celebration: 'On-screen celebration',
   };
   return labels[type] ?? type.replace(/_/g, ' ');
-};
-
-const formatTier = (tier: string) => {
-  if (tier === '1000') {
-    return 'Tier 1';
-  }
-  if (tier === '2000') {
-    return 'Tier 2';
-  }
-  if (tier === '3000') {
-    return 'Tier 3';
-  }
-  if (tier === 'Prime') {
-    return 'Prime';
-  }
-  return tier;
 };
