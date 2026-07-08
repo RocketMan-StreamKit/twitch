@@ -43,6 +43,18 @@ const formatBotDisconnectLabel = (login: string) => ({
 });
 
 /**
+ * Returns schema fields without `editor` blocks so values persist but stay hidden in the UI.
+ * @param fields Addon config fields that should remain in storage when not shown in settings.
+ */
+const withoutEditors = (fields: AddonConfigSchema): AddonConfigSchema =>
+  fields.map(entry => {
+    if (Array.isArray(entry)) {
+      return entry.map(field => ({ ...field, editor: undefined }));
+    }
+    return { ...entry, editor: undefined };
+  });
+
+/**
  * Builds localized auth URL field labels for copy-paste OAuth links.
  */
 const authUrlField = (
@@ -350,7 +362,7 @@ const buildConfigFields = (
     },
     ...mainAccountFields,
     ...botAccountFields,
-    ...(access_token ? chatSettings : []),
+    ...(access_token ? chatSettings : withoutEditors(chatSettings)),
   ];
 };
 
