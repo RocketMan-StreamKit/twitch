@@ -81,6 +81,7 @@ export const EVENTSUB_TYPES = [
     version: '2',
     condition: (broadcasterId: string) => ({
       broadcaster_user_id: broadcasterId,
+      moderator_user_id: broadcasterId,
     }),
   },
   {
