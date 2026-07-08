@@ -278,7 +278,7 @@ export const pushSubGift = async (
   const profile = await buildTwitchProfile(gifter);
   return dashboard.addRecord(
     {
-      type: 'custom',
+      type: 'subscribe',
       platform: PLATFORM,
       from: profile.id,
       message: localizedGiftedSubs(total, tier),
@@ -314,7 +314,7 @@ export const pushCombinedGiftSub = async (
   const recipientName = recipient.user_name || recipient.user_login;
   return dashboard.addRecord(
     {
-      type: 'custom',
+      type: 'subscribe',
       platform: PLATFORM,
       from: profile.id,
       message: localizedGiftedSubTo(recipientName, tier),
@@ -350,7 +350,7 @@ export const pushResubSubscribe = async (
   const profile = await buildTwitchProfile(user);
   return dashboard.addRecord(
     {
-      type: 'custom',
+      type: 'subscribe',
       platform: PLATFORM,
       from: profile.id,
       message: localizedResubLine(cumulativeMonths, tier),
@@ -381,7 +381,7 @@ export const pushSubRenewal = async (
   }
   return dashboard.addRecord(
     {
-      type: 'custom',
+      type: 'subscribe',
       platform: PLATFORM,
       from: profile.id,
       message,
