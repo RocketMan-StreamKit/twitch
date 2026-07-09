@@ -11,6 +11,7 @@ export type TwitchAddonSettings = {
   showRewardRedemption: boolean;
   speakHighlightedMessages: boolean;
   deleteUnusedRewards: boolean;
+  addRewardEmoji: boolean;
   showFirstUserMessage: boolean;
   showChatSubscriptions: boolean;
 };
@@ -28,6 +29,7 @@ const DEFAULTS: TwitchAddonSettings = {
   showRewardRedemption: true,
   speakHighlightedMessages: false,
   deleteUnusedRewards: false,
+  addRewardEmoji: true,
   showFirstUserMessage: true,
   showChatSubscriptions: true,
 };
@@ -65,6 +67,7 @@ export const reloadSettings = async (): Promise<TwitchAddonSettings> => {
     showRewardRedemption: params.show_reward_redemption !== false,
     speakHighlightedMessages: params.speak_highlighted_messages === true,
     deleteUnusedRewards: params.delete_unused_rewards === true,
+    addRewardEmoji: params.add_reward_emoji !== false,
     showFirstUserMessage: params.show_first_user_message !== false,
     showChatSubscriptions: params.show_chat_subscriptions !== false,
   };

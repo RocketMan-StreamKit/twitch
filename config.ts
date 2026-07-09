@@ -248,6 +248,23 @@ const buildConfigFields = (
       },
     },
     {
+      key: 'add_reward_emoji',
+      type: 'boolean',
+      default: true,
+      editor: {
+        label: {
+          en: 'Add emoji to reward titles',
+          ru: 'Добавлять эмодзи к названию награды',
+          uk: 'Додавати емодзі до назви нагороди',
+        },
+        description: {
+          en: 'When enabled, a prefix emoji is added to generated reward titles: sounds — 🔊, overlays — 📺, hotkey integrations — ⌨️, game integrations — 🎮',
+          ru: 'Когда включено, в начале названия награды при генерации добавляется эмодзи: для звуков — 🔊, оверлеев — 📺, хоткей-интеграций — ⌨️, игровых интеграций — 🎮',
+          uk: 'Коли увімкнено, на початку назви нагороди під час генерації додається емодзі: для звуків — 🔊, оверлеїв — 📺, хоткей-інтеграцій — ⌨️, ігрових інтеграцій — 🎮',
+        },
+      },
+    },
+    {
       key: 'show_first_user_message',
       type: 'boolean',
       default: true,

@@ -1,4 +1,5 @@
 import { TwitchApi } from './api';
+import { buildRewardTitle } from './reward-title';
 import { reloadSettings } from './settings';
 
 const PROVIDER = 'rewards';
@@ -35,6 +36,7 @@ events.On(
   `overlayTriggerValue:${PROVIDER}:create`,
   async (payload: {
     title?: string;
+    overlayId?: string;
     context?: Record<string, string | number | boolean>;
   }) => {
     if (!TwitchApi.accessToken) {
@@ -45,6 +47,14 @@ events.On(
     if (!title) {
       return { success: false, message: 'Reward title is required' };
     }
+
+    const settings = await reloadSettings();
+    const rewardTitle = await buildRewardTitle({
+      title,
+      overlayId: payload?.overlayId,
+      context: payload?.context,
+      addEmoji: settings.addRewardEmoji,
+    });
 
     const rawCost = payload?.context?.cost;
     const cost =
@@ -57,7 +67,7 @@ events.On(
       return { success: false, message: 'Reward cost must be at least 1' };
     }
 
-    const ensured = await TwitchApi.EnsureCustomReward(title, cost);
+    const ensured = await TwitchApi.EnsureCustomReward(rewardTitle, cost);
     if (!ensured.success || !ensured.reward?.id) {
       return {
         success: false,

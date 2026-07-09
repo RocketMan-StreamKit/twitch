@@ -10,7 +10,7 @@ Integration with Twitch API to display stream information, chat, viewer count in
 
 **Chat notifications:** configurable framed chat events — raids, shoutouts, watch streaks, reward redemptions, first-time chatter messages, and subscription notices (same style as announcements). Optional TTS for highlighted channel-point messages (off by default; uses the TTS engine from StreamKit+ settings).
 
-**Channel point rewards:** optional setting to delete Twitch rewards when they are removed from all triggers in the app (off by default). Generating a reward through a trigger reuses an existing reward with the same title and updates its cost.
+**Channel point rewards:** optional setting to delete Twitch rewards when they are removed from all triggers in the app (off by default). Generating a reward through a trigger reuses an existing reward with the same title and updates its cost. Optional emoji prefixes in generated reward titles (on by default): sounds — 🔊, overlays — 📺, hotkey integrations — ⌨️, game integrations — 🎮.
 
 **Addon RPC:** other addons can reuse Twitch OAuth and Helix API through `addons.request('twitch', …)` — `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `getChannelId`, and `sendChatMessage`. Missing scopes trigger re-authorization in the browser when the user was already logged in.
 
@@ -72,7 +72,7 @@ Methods: `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `
 
 **Оповещения в чате:** настраиваемые события в рамке — рейды, shoutout, watch streak, применение наград, первые сообщения зрителей и подписки (в том же стиле, что и анонсы). Опциональное озвучивание выделенных сообщений через TTS (по умолчанию выкл.; использует движок TTS из настроек StreamKit+).
 
-**Награды за баллы канала:** опциональная настройка удалять награды Twitch, когда они убраны из всех триггеров в приложении (по умолчанию выключено). При генерации награды через триггер используется существующая награда с таким же названием, а её стоимость обновляется.
+**Награды за баллы канала:** опциональная настройка удалять награды Twitch, когда они убраны из всех триггеров в приложении (по умолчанию выключено). При генерации награды через триггер используется существующая награда с таким же названием, а её стоимость обновляется. Опциональные эмодзи в начале названия при генерации (по умолчанию включено): звуки — 🔊, оверлеи — 📺, хоткей-интеграции — ⌨️, игровые интеграции — 🎮.
 
 **RPC для аддонов:** другие аддоны могут использовать OAuth и Helix API Twitch через `addons.request('twitch', …)` — `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `getChannelId`, `sendChatMessage`. При нехватке scope откроется повторная авторизация в браузере, если пользователь уже входил ранее.
 
@@ -113,7 +113,7 @@ npm run build
 
 **Сповіщення в чаті:** налаштовувані події в рамці — рейди, shoutout, watch streak, застосування нагород, перші повідомлення глядачів і підписки (у тому ж стилі, що й анонси). Опціональне озвучування виділених повідомлень через TTS (за замовчуванням вимкнено; використовує рушій TTS із налаштувань StreamKit+).
 
-**Нагороди за бали каналу:** опціональне налаштування видаляти нагороди Twitch, коли їх прибрано з усіх тригерів у програмі (за замовчуванням вимкнено). Під час генерації нагороди через тригер використовується існуюча нагорода з такою ж назвою, а її вартість оновлюється.
+**Нагороди за бали каналу:** опціональне налаштування видаляти нагороди Twitch, коли їх прибрано з усіх тригерів у програмі (за замовчуванням вимкнено). Під час генерації нагороди через тригер використовується існуюча нагорода з такою ж назвою, а її вартість оновлюється. Опціональні емодзі на початку назви під час генерації (за замовчуванням увімкнено): звуки — 🔊, оверлеї — 📺, хоткей-інтеграції — ⌨️, ігрові інтеграції — 🎮.
 
 **RPC для аддонів:** інші аддони можуть використовувати OAuth і Helix API Twitch через `addons.request('twitch', …)` — `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `getChannelId`, `sendChatMessage`. Якщо scope не вистачає, відкриється повторна авторизація в браузері, якщо користувач уже входив раніше.
 
