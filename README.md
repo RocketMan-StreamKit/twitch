@@ -8,7 +8,7 @@
 
 Integration with Twitch API to display stream information, chat, viewer count in the status bar, and more.
 
-**Chat notifications:** configurable framed chat events — raids, shoutouts, watch streaks, reward redemptions, first-time chatter messages, and subscription notices (same style as announcements). Optional TTS for highlighted channel-point messages (off by default; uses the TTS engine from StreamKit+ settings).
+**Chat notifications:** configurable framed chat events — raids, shoutouts, watch streaks, reward redemptions, first-time chatter messages, and subscription notices (same style as announcements). Optional TTS for highlighted channel-point messages (off by default; uses the TTS engine from StreamKit+ settings). `/me` messages are unwrapped from CTCP ACTION form; when enabled (default), their text uses the author's nickname color (`_as_user_`).
 
 **Channel point rewards:** optional setting to delete Twitch rewards when they are removed from all triggers in the app (off by default). Generating a reward through a trigger reuses an existing reward with the same title and updates its cost. Optional emoji prefixes in generated reward titles (on by default): sounds — 🔊, overlays — 📺, hotkey integrations — ⌨️, game integrations — 🎮.
 
@@ -70,7 +70,7 @@ Methods: `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `
 
 Интеграция с Twitch API для отображения информации о стриме, чата, онлайна в строке состояния и многого другого.
 
-**Оповещения в чате:** настраиваемые события в рамке — рейды, shoutout, watch streak, применение наград, первые сообщения зрителей и подписки (в том же стиле, что и анонсы). Опциональное озвучивание выделенных сообщений через TTS (по умолчанию выкл.; использует движок TTS из настроек StreamKit+).
+**Оповещения в чате:** настраиваемые события в рамке — рейды, shoutout, watch streak, применение наград, первые сообщения зрителей и подписки (в том же стиле, что и анонсы). Опциональное озвучивание выделенных сообщений через TTS (по умолчанию выкл.; использует движок TTS из настроек StreamKit+). Сообщения `/me` разбираются из CTCP ACTION; при включённой настройке (по умолчанию) текст показывается цветом ника автора (`_as_user_`).
 
 **Награды за баллы канала:** опциональная настройка удалять награды Twitch, когда они убраны из всех триггеров в приложении (по умолчанию выключено). При генерации награды через триггер используется существующая награда с таким же названием, а её стоимость обновляется. Опциональные эмодзи в начале названия при генерации (по умолчанию включено): звуки — 🔊, оверлеи — 📺, хоткей-интеграции — ⌨️, игровые интеграции — 🎮.
 
@@ -111,7 +111,7 @@ npm run build
 
 Інтеграція з Twitch API для відображення інформації про стрім, чат, онлайну в рядку стану та багато іншого.
 
-**Сповіщення в чаті:** налаштовувані події в рамці — рейди, shoutout, watch streak, застосування нагород, перші повідомлення глядачів і підписки (у тому ж стилі, що й анонси). Опціональне озвучування виділених повідомлень через TTS (за замовчуванням вимкнено; використовує рушій TTS із налаштувань StreamKit+).
+**Сповіщення в чаті:** налаштовувані події в рамці — рейди, shoutout, watch streak, застосування нагород, перші повідомлення глядачів і підписки (у тому ж стилі, що й анонси). Опціональне озвучування виділених повідомлень через TTS (за замовчуванням вимкнено; використовує рушій TTS із налаштувань StreamKit+). Повідомлення `/me` розбираються з CTCP ACTION; за увімкненого налаштування (за замовчуванням) текст показується кольором ніка автора (`_as_user_`).
 
 **Нагороди за бали каналу:** опціональне налаштування видаляти нагороди Twitch, коли їх прибрано з усіх тригерів у програмі (за замовчуванням вимкнено). Під час генерації нагороди через тригер використовується існуюча нагорода з такою ж назвою, а її вартість оновлюється. Опціональні емодзі на початку назви під час генерації (за замовчуванням увімкнено): звуки — 🔊, оверлеї — 📺, хоткей-інтеграції — ⌨️, ігрові інтеграції — 🎮.
 

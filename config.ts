@@ -288,6 +288,23 @@ const buildConfigFields = (
         },
       },
     },
+    {
+      key: 'colorize_me_messages',
+      type: 'boolean',
+      default: true,
+      editor: {
+        label: {
+          en: 'Color /me messages with nickname color',
+          ru: 'Окрашивать сообщения /me цветом ника',
+          uk: 'Забарвлювати повідомлення /me кольором ніка',
+        },
+        description: {
+          en: 'When a viewer uses /me, show the message text in their nickname color',
+          ru: 'Когда зритель использует /me, текст сообщения показывается цветом его ника',
+          uk: 'Коли глядач використовує /me, текст повідомлення показується кольором його ніка',
+        },
+      },
+    },
   ];
 
   const mainAccountFields: AddonConfigSchema = [

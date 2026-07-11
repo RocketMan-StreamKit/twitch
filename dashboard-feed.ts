@@ -529,6 +529,21 @@ const pushSystemChat = async (
   });
 };
 
+/**
+ * Pushes a user chat line to the dashboard.
+ * @param login Twitch login of the author.
+ * @param displayName Display name shown in chat.
+ * @param content Message text (already cleaned of CTCP wrappers when needed).
+ * @param twitchUserId Optional Helix user id for avatar/profile lookup.
+ * @param color Optional nickname color for the author profile.
+ * @param icons Optional badge icon ids.
+ * @param emotes Optional emote word→url map for rendering.
+ * @param style Optional bordered/header frame style.
+ * @param messageId Optional stable dashboard message id.
+ * @param textColor Optional message text color (`#rrggbb` or `_as_user_`).
+ * @example
+ * await pushChatMessage('viewer', 'Viewer', 'hello', '123', '#9147ff');
+ */
 export const pushChatMessage = async (
   login: string,
   displayName: string,
@@ -538,7 +553,8 @@ export const pushChatMessage = async (
   icons?: string[],
   emotes?: { word: string; url: string }[],
   style?: ChatMessageStyle,
-  messageId?: string
+  messageId?: string,
+  textColor?: string
 ) => {
   const id = twitchUserId ? userId(twitchUserId) : `twitch:login:${login}`;
   const avatar = twitchUserId ? await resolveUserAvatar(twitchUserId) : '';
@@ -556,6 +572,7 @@ export const pushChatMessage = async (
       content,
       platform: PLATFORM,
       from: profile.id,
+      color: textColor,
       emotes: emotes?.length ? emotes : undefined,
       style,
     },
@@ -660,6 +677,40 @@ const extractEmotesFromTwitchFragments = (
   return Object.entries(map).map(([word, url]) => ({ word, url }));
 };
 
+/** CTCP delimiter used by Twitch for `/me` (ACTION) messages. */
+const CTCP_DELIMITER = '\u0001';
+
+/** Prefix of a Twitch `/me` ACTION payload (`\u0001ACTION `). */
+const ACTION_PREFIX = `${CTCP_DELIMITER}ACTION `;
+
+/**
+ * Parses Twitch chat text, stripping CTCP ACTION wrappers from `/me` messages.
+ * @param text Raw `message.text` from EventSub (`\u0001ACTION …\u0001` for `/me`).
+ * @returns Clean content and whether the message was a `/me` action.
+ * @example
+ * parseTwitchChatText('\u0001ACTION test message\u0001')
+ * // { content: 'test message', isAction: true }
+ */
+const parseTwitchChatText = (
+  text: string
+): { content: string; isAction: boolean } => {
+  const raw = text.trim();
+  if (!raw.startsWith(ACTION_PREFIX)) {
+    return { content: raw, isAction: false };
+  }
+  let body = raw.slice(ACTION_PREFIX.length);
+  if (body.endsWith(CTCP_DELIMITER)) {
+    body = body.slice(0, -1);
+  }
+  return { content: body.trim(), isAction: true };
+};
+
+/**
+ * Pushes a Twitch EventSub chat message to the dashboard and dispatches triggers.
+ * `/me` messages (`\u0001ACTION …\u0001`) are unwrapped; when colorize is enabled,
+ * their text color is set to `_as_user_`.
+ * @param event Channel chat message EventSub payload fields used by the addon.
+ */
 export const pushChatFromEventSub = async (event: {
   chatter_user_id: string;
   chatter_user_login: string;
@@ -678,7 +729,7 @@ export const pushChatFromEventSub = async (event: {
   if (event.message_type === 'channel_points_highlighted') {
     return;
   }
-  const content = event.message?.text?.trim();
+  const { content, isAction } = parseTwitchChatText(event.message?.text ?? '');
   if (!content) {
     return;
   }
@@ -695,6 +746,8 @@ export const pushChatFromEventSub = async (event: {
     : event.message_type === 'user_intro' && getSettings().showFirstUserMessage
       ? FIRST_MESSAGE_STYLE
       : undefined;
+  const textColor =
+    isAction && getSettings().colorizeMeMessages ? '_as_user_' : undefined;
   await pushChatMessage(
     event.chatter_user_login,
     event.chatter_user_name,
@@ -704,7 +757,8 @@ export const pushChatFromEventSub = async (event: {
     icons,
     emotes,
     style,
-    messageId
+    messageId,
+    textColor
   );
 
   await dispatchChatMessageTriggers(

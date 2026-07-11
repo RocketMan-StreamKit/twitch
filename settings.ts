@@ -14,6 +14,7 @@ export type TwitchAddonSettings = {
   addRewardEmoji: boolean;
   showFirstUserMessage: boolean;
   showChatSubscriptions: boolean;
+  colorizeMeMessages: boolean;
 };
 
 const DEFAULTS: TwitchAddonSettings = {
@@ -32,6 +33,7 @@ const DEFAULTS: TwitchAddonSettings = {
   addRewardEmoji: true,
   showFirstUserMessage: true,
   showChatSubscriptions: true,
+  colorizeMeMessages: true,
 };
 
 const readPositiveInt = (value: unknown, fallback: number) => {
@@ -70,6 +72,7 @@ export const reloadSettings = async (): Promise<TwitchAddonSettings> => {
     addRewardEmoji: params.add_reward_emoji !== false,
     showFirstUserMessage: params.show_first_user_message !== false,
     showChatSubscriptions: params.show_chat_subscriptions !== false,
+    colorizeMeMessages: params.colorize_me_messages !== false,
   };
   return cached;
 };
