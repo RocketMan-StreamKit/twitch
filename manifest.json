@@ -11,7 +11,7 @@
     "uk": "Інтеграція з Twitch API для відображення інформації про стрім, чат, онлайну в рядку стану та багато іншого."
   },
   "type": "platform.streaming",
-  "version": "1.0.20",
+  "version": "1.0.21",
   "app_version": "1.0.27",
   "author": "RocketMan System",
   "icon": "logo.png",
