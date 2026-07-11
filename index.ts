@@ -2,6 +2,7 @@ import './auth';
 import './requests';
 import './chat-triggers';
 import './overlay-trigger-values';
+import './trigger-validation';
 import { RegenerateConfig } from './config';
 import { PLATFORM } from './constants';
 import { registerTwitchOverlayTriggers } from './triggers';
