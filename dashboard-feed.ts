@@ -20,13 +20,13 @@ type LocalizedText = { en: string; ru?: string; uk?: string };
  */
 const localizedTier = (tier: string): LocalizedText => {
   if (tier === '1000') {
-    return { en: 'Tier 1', ru: 'Тир 1', uk: 'Тир 1' };
+    return { en: 'Tier 1', ru: 'уровень 1', uk: 'рівень 1' };
   }
   if (tier === '2000') {
-    return { en: 'Tier 2', ru: 'Тир 2', uk: 'Тир 2' };
+    return { en: 'Tier 2', ru: 'уровень 2', uk: 'рівень 2' };
   }
   if (tier === '3000') {
-    return { en: 'Tier 3', ru: 'Тир 3', uk: 'Тир 3' };
+    return { en: 'Tier 3', ru: 'уровень 3', uk: 'рівень 3' };
   }
   if (tier === 'Prime') {
     return { en: 'Prime', ru: 'Prime', uk: 'Prime' };
@@ -149,6 +149,19 @@ const localizedGiftSubscription = (tier: string): LocalizedText => {
 };
 
 /**
+ * Builds a localized paid subscription message (new sub, not resub).
+ * @param tier Twitch tier code.
+ */
+const localizedPaidSubscription = (tier: string): LocalizedText => {
+  const tierLabel = localizedTier(tier);
+  return {
+    en: `Paid subscription (${tierLabel.en})`,
+    ru: `Платная подписка (${tierLabel.ru})`,
+    uk: `Платна підписка (${tierLabel.uk})`,
+  };
+};
+
+/**
  * Builds a localized resub line with months and tier.
  * @param months Cumulative subscribed months.
  * @param tier Twitch tier code.
@@ -157,9 +170,9 @@ const localizedResubLine = (months: number, tier: string): LocalizedText => {
   const monthsLabel = localizedMonths(months);
   const tierLabel = localizedTier(tier);
   return {
-    en: `Resub — ${monthsLabel.en} (${tierLabel.en})`,
-    ru: `Ресаб — ${monthsLabel.ru} (${tierLabel.ru})`,
-    uk: `Ресаб — ${monthsLabel.uk} (${tierLabel.uk})`,
+    en: `Renewed subscription: ${monthsLabel.en} (${tierLabel.en})`,
+    ru: `Продлил подписку: ${monthsLabel.ru} (${tierLabel.ru})`,
+    uk: `Продовжив підписку: ${monthsLabel.uk} (${tierLabel.uk})`,
   };
 };
 
@@ -170,9 +183,9 @@ const localizedResubLine = (months: number, tier: string): LocalizedText => {
 const localizedResubMonthsOnly = (months: number): LocalizedText => {
   const monthsLabel = localizedMonths(months);
   return {
-    en: `Resub — ${monthsLabel.en}`,
-    ru: `Ресаб — ${monthsLabel.ru}`,
-    uk: `Ресаб — ${monthsLabel.uk}`,
+    en: `Renewed subscription: ${monthsLabel.en}`,
+    ru: `Продлил подписку: ${monthsLabel.ru}`,
+    uk: `Продовжив підписку: ${monthsLabel.uk}`,
   };
 };
 
@@ -191,15 +204,15 @@ const localizedResubWithText = (
   if (tier) {
     const tierLabel = localizedTier(tier);
     return {
-      en: `Resub (${monthsLabel.en}, ${tierLabel.en}): ${text}`,
-      ru: `Ресаб (${monthsLabel.ru}, ${tierLabel.ru}): ${text}`,
-      uk: `Ресаб (${monthsLabel.uk}, ${tierLabel.uk}): ${text}`,
+      en: `Renewed subscription (${monthsLabel.en}, ${tierLabel.en}): ${text}`,
+      ru: `Продлил подписку (${monthsLabel.ru}, ${tierLabel.ru}): ${text}`,
+      uk: `Продовжив підписку (${monthsLabel.uk}, ${tierLabel.uk}): ${text}`,
     };
   }
   return {
-    en: `Resub (${monthsLabel.en}): ${text}`,
-    ru: `Ресаб (${monthsLabel.ru}): ${text}`,
-    uk: `Ресаб (${monthsLabel.uk}): ${text}`,
+    en: `Renewed subscription (${monthsLabel.en}): ${text}`,
+    ru: `Продлил подписку (${monthsLabel.ru}): ${text}`,
+    uk: `Продовжив підписку (${monthsLabel.uk}): ${text}`,
   };
 };
 
@@ -252,7 +265,7 @@ export const pushSubscribe = async (
   const profile = await buildTwitchProfile(user);
   const message = isGift
     ? localizedGiftSubscription(tier)
-    : localizedTier(tier);
+    : localizedPaidSubscription(tier);
   return dashboard.addRecord(
     {
       type: 'subscribe',
