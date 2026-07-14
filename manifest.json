@@ -12,7 +12,7 @@
   },
   "type": "platform.streaming",
   "version": "1.0.23",
-  "app_version": "1.0.28",
+  "app_version": "1.0.34",
   "author": "RocketMan System",
   "icon": "logo.png",
   "permissions": [
