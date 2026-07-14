@@ -567,7 +567,8 @@ export const pushChatMessage = async (
   emotes?: { word: string; url: string }[],
   style?: ChatMessageStyle,
   messageId?: string,
-  textColor?: string
+  textColor?: string,
+  system?: boolean
 ) => {
   const id = twitchUserId ? userId(twitchUserId) : `twitch:login:${login}`;
   const avatar = twitchUserId ? await resolveUserAvatar(twitchUserId) : '';
@@ -588,6 +589,7 @@ export const pushChatMessage = async (
       color: textColor,
       emotes: emotes?.length ? emotes : undefined,
       style,
+      system,
     },
     profile
   );
@@ -802,7 +804,9 @@ export const pushFramedSystemChatNotification = async (event: {
     undefined,
     undefined,
     chatNotificationStyle(event.kind),
-    event.messageId
+    event.messageId,
+    undefined,
+    true
   );
 };
 
@@ -825,7 +829,9 @@ export const pushShoutoutChatNotification = async (event: {
     undefined,
     undefined,
     chatNotificationStyle('shoutout'),
-    `twitch:shoutout:${event.toLogin}:${Date.now()}`
+    `twitch:shoutout:${event.toLogin}:${Date.now()}`,
+    undefined,
+    true
   );
 };
 
@@ -857,7 +863,9 @@ export const pushRewardRedemptionChatNotification = async (event: {
     undefined,
     undefined,
     chatNotificationStyle(kind),
-    `twitch:reward-chat:${event.id}`
+    `twitch:reward-chat:${event.id}`,
+    undefined,
+    true
   );
 };
 
@@ -898,7 +906,9 @@ export const pushChatAnnouncementFromEventSub = async (event: {
       header: ANNOUNCEMENT_STYLE_HEADER,
       icon: 'megaphone',
     },
-    event.message_id ? `twitch:announcement:${event.message_id}` : undefined
+    event.message_id ? `twitch:announcement:${event.message_id}` : undefined,
+    undefined,
+    true
   );
 };
 
@@ -924,7 +934,9 @@ export const pushPinnedChatMessage = async (event: {
     undefined,
     emotes,
     PINNED_STYLE,
-    twitchChatMessageId(event.message_id)
+    twitchChatMessageId(event.message_id),
+    undefined,
+    true
   );
 };
 
@@ -954,7 +966,9 @@ export const repushChatMessageWithoutPin = async (event: {
     undefined,
     emotes,
     undefined,
-    twitchChatMessageId(event.message_id)
+    twitchChatMessageId(event.message_id),
+    undefined,
+    true
   );
 };
 
