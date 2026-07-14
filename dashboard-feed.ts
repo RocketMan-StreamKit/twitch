@@ -934,9 +934,7 @@ export const pushPinnedChatMessage = async (event: {
     undefined,
     emotes,
     PINNED_STYLE,
-    twitchChatMessageId(event.message_id),
-    undefined,
-    true
+    twitchChatMessageId(event.message_id)
   );
 };
 
@@ -966,9 +964,7 @@ export const repushChatMessageWithoutPin = async (event: {
     undefined,
     emotes,
     undefined,
-    twitchChatMessageId(event.message_id),
-    undefined,
-    true
+    twitchChatMessageId(event.message_id)
   );
 };
 
