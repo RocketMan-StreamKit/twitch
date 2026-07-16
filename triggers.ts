@@ -145,6 +145,14 @@ export const registerTwitchOverlayTriggers = () => {
         default: 100,
         min: 1,
       },
+      valueDescription: {
+        style: 'info',
+        text: {
+          en: 'It is better to use unique rewards. When creating a trigger through StreamKit, prefer not to reuse a reward that was already created for another event — generate a new one instead.',
+          ru: 'Лучше использовать уникальные награды. При создании триггера через StreamKit не стоит выбирать ранее созданные награды для текущего события — сгенерируйте новую.',
+          uk: 'Краще використовувати унікальні нагороди. Під час створення тригера через StreamKit не варто обирати раніше створені нагороди для поточної події — згенеруйте нову.',
+        },
+      },
     },
   ]);
 };
