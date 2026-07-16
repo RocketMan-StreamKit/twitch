@@ -14,7 +14,7 @@ Integration with Twitch API to display stream information, chat, viewer count in
 
 **Addon RPC:** other addons can reuse Twitch OAuth and Helix API through `addons.request('twitch', …)` — `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `getChannelId`, and `sendChatMessage`. Missing scopes trigger re-authorization in the browser when the user was already logged in.
 
-**Bot account:** optional second Twitch login for sending chat messages (`user:write:chat` only). Other addons' `sendChatMessage` uses the bot when configured, otherwise the main account. A setting controls whether the in-app chat input uses the bot (off by default; falls back to the main account when the bot is not set up). Authorization links for both accounts can be copied from settings.
+**Bot account:** optional second Twitch login for sending chat messages (`user:write:chat` only). Other addons' `sendChatMessage` uses the bot when configured, otherwise the main account. Dashboard `onChatSend` with `system: true` uses the bot when connected, otherwise (and for non-system messages, including the chat input) the main account. Authorization links for both accounts can be copied from settings.
 
 **Install:** Settings → Addons → Install from folder (or drag-and-drop the folder/zip into the app window).
 
@@ -76,7 +76,7 @@ Methods: `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `
 
 **RPC для аддонов:** другие аддоны могут использовать OAuth и Helix API Twitch через `addons.request('twitch', …)` — `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `getChannelId`, `sendChatMessage`. При нехватке scope откроется повторная авторизация в браузере, если пользователь уже входил ранее.
 
-**Аккаунт бота:** опциональный второй вход в Twitch только для отправки сообщений в чат (`user:write:chat`). RPC `sendChatMessage` использует бота, если он настроен, иначе основную учётку. Настройка управляет отправкой из окна чата приложения (по умолчанию выкл.; без бота — основная учётка). Ссылки для авторизации обеих учёток можно скопировать в настройках.
+**Аккаунт бота:** опциональный второй вход в Twitch только для отправки сообщений в чат (`user:write:chat`). RPC `sendChatMessage` использует бота, если он настроен, иначе основную учётку. Dashboard `onChatSend` с `system: true` отправляет через бота, если он подключён; иначе (и для несистемных сообщений, включая поле ввода чата) — через основной аккаунт. Ссылки для авторизации обеих учёток можно скопировать в настройках.
 
 **Установка:** Настройки → Аддоны → Установить из папки (или перетащите папку/zip в окно приложения).
 
@@ -117,7 +117,7 @@ npm run build
 
 **RPC для аддонів:** інші аддони можуть використовувати OAuth і Helix API Twitch через `addons.request('twitch', …)` — `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiDelete`, `getChannelId`, `sendChatMessage`. Якщо scope не вистачає, відкриється повторна авторизація в браузері, якщо користувач уже входив раніше.
 
-**Акаунт бота:** опціональний другий вхід у Twitch лише для надсилання повідомлень у чат (`user:write:chat`). RPC `sendChatMessage` використовує бота, якщо він налаштований, інакше основний акаунт. Налаштування керує надсиланням з вікна чату програми (за замовчуванням вимкнено; без бота — основний акаунт). Посилання для авторизації обох акаунтів можна скопіювати в налаштуваннях.
+**Акаунт бота:** опціональний другий вхід у Twitch лише для надсилання повідомлень у чат (`user:write:chat`). RPC `sendChatMessage` використовує бота, якщо він налаштований, інакше основний акаунт. Dashboard `onChatSend` з `system: true` надсилає через бота, якщо він підключений; інакше (і для несистемних повідомлень, включно з полем вводу чату) — через основний акаунт. Посилання для авторизації обох акаунтів можна скопіювати в налаштуваннях.
 
 **Встановлення:** Налаштування → Аддони → Встановити з папки (або перетягніть папку/zip у вікно програми).
 

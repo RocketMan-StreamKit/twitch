@@ -89,23 +89,6 @@ const buildConfigFields = (
 ): AddonConfigSchema => {
   const chatSettings: AddonConfigSchema = [
     {
-      key: 'send_chat_via_bot',
-      type: 'boolean',
-      default: false,
-      editor: {
-        label: {
-          en: 'Send chat messages via bot account',
-          ru: 'Отправлять сообщения в чат через аккаунт бота',
-          uk: 'Надсилати повідомлення в чат через акаунт бота',
-        },
-        description: {
-          en: 'Uses the bot account when configured; otherwise the main account',
-          ru: 'Использует аккаунт бота, если он настроен; иначе основной аккаунт',
-          uk: 'Використовує акаунт бота, якщо він налаштований; інакше основний акаунт',
-        },
-      },
-    },
-    {
       key: 'show_moderator_actions',
       type: 'boolean',
       default: true,

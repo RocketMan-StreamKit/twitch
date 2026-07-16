@@ -72,11 +72,11 @@ export const startTwitchTracking = async () => {
     await startChatMonitor(user.id);
     await refreshViewerCount(user.id);
 
-    void dashboard.onChatSend(async ({ text }) => {
+    void dashboard.onChatSend(async ({ text, system }) => {
       if (!broadcasterId) {
         throw new Error('Twitch is not authorized');
       }
-      const credentials = await resolveDashboardChatSender();
+      const credentials = await resolveDashboardChatSender({ system });
       if (!credentials) {
         throw new Error('Twitch is not authorized');
       }
