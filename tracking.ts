@@ -20,6 +20,9 @@ let starting = false;
 let badgesRefreshTimer: ReturnType<typeof setInterval> | null = null;
 let emotesRefreshTimer: ReturnType<typeof setInterval> | null = null;
 let broadcasterId: string | null = null;
+let broadcasterLogin: string | null = null;
+
+export const getBroadcasterLogin = (): string | null => broadcasterLogin;
 
 const BADGES_REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6h
 const EMOTES_REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6h
@@ -44,6 +47,7 @@ export const startTwitchTracking = async () => {
     }
 
     broadcasterId = user.id;
+    broadcasterLogin = user.login;
     await reloadSettings();
     await refreshChatBadges(user.id);
     await refreshChatEmotes(user.id);
@@ -105,6 +109,7 @@ export const stopTwitchTracking = (options?: { notify?: boolean }) => {
   eventSub?.stop();
   eventSub = null;
   broadcasterId = null;
+  broadcasterLogin = null;
   stopViewerCountPolling();
   if (badgesRefreshTimer) {
     clearInterval(badgesRefreshTimer);

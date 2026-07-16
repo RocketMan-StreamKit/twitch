@@ -7,6 +7,7 @@ import {
 } from './dashboard-user';
 import { speakHighlightedMessage } from './highlighted-tts';
 import { getSettings } from './settings';
+import { getBroadcasterLogin } from './tracking';
 
 export type { TwitchEventUser } from './dashboard-user';
 export { buildTwitchProfile, toDashboardUser } from './dashboard-user';
@@ -557,6 +558,16 @@ const pushSystemChat = async (
  * @example
  * await pushChatMessage('viewer', 'Viewer', 'hello', '123', '#9147ff');
  */
+const isMention = (content: string, login: string): boolean => {
+  if (!login) return false;
+  const escaped = login.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const mentionRegex = new RegExp(
+    `(?:^|[\\s,])@?${escaped},?(?:[\\s,]|$)`,
+    'i'
+  );
+  return mentionRegex.test(content);
+};
+
 export const pushChatMessage = async (
   login: string,
   displayName: string,
@@ -580,6 +591,7 @@ export const pushChatMessage = async (
     color,
     icons,
   };
+  const mention = !system && isMention(content, getBroadcasterLogin() ?? '');
   return dashboard.addChatMessage(
     {
       id: messageId,
@@ -590,6 +602,7 @@ export const pushChatMessage = async (
       emotes: emotes?.length ? emotes : undefined,
       style,
       system,
+      mention: mention || undefined,
     },
     profile
   );
