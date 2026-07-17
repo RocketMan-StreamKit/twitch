@@ -1,6 +1,6 @@
 {
   "name": "@rocketman-streamkit/addon-twitch",
-  "version": "1.0.27",
+  "version": "1.0.28",
   "private": true,
   "description": "StreamKit+ integration addon: twitch",
   "scripts": {
@@ -8,7 +8,7 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@rocketman-streamkit/types": "^1.0.39",
+    "@rocketman-streamkit/types": "^1.0.41",
     "copy-webpack-plugin": "^12.0.2",
     "ts-loader": "^9.5.1",
     "typescript": "^5.7.2",

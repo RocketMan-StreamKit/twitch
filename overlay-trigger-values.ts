@@ -1,4 +1,6 @@
 import { TwitchApi } from './api';
+import { rememberRewardMeta } from './reward-meta';
+import { syncMissingChannelPointRewards } from './reward-sync';
 import { buildRewardTitle } from './reward-title';
 import { reloadSettings } from './settings';
 
@@ -13,13 +15,25 @@ events.On(`overlayTriggerValue:${PROVIDER}:list`, async () => {
     };
   }
 
+  let remappedValues: Array<{ from: string; to: string }> = [];
+  try {
+    remappedValues = await syncMissingChannelPointRewards();
+  } catch (error) {
+    console.error('Failed to sync missing Twitch rewards before list:', error);
+  }
+
   const result = await TwitchApi.ListCustomRewards();
   if (!result.success) {
     return {
       success: false,
       message: result.message || 'Failed to load Twitch rewards',
       items: [],
+      remappedValues: remappedValues.length ? remappedValues : undefined,
     };
+  }
+
+  for (const reward of result.rewards) {
+    rememberRewardMeta(reward.id, reward.title, reward.cost);
   }
 
   return {
@@ -29,6 +43,7 @@ events.On(`overlayTriggerValue:${PROVIDER}:list`, async () => {
       label: item.title,
       meta: String(item.cost),
     })),
+    remappedValues: remappedValues.length ? remappedValues : undefined,
   };
 });
 
@@ -74,6 +89,12 @@ events.On(
         message: ensured.message || 'Failed to create Twitch reward',
       };
     }
+
+    rememberRewardMeta(
+      ensured.reward.id,
+      ensured.reward.title,
+      ensured.reward.cost
+    );
 
     return {
       success: true,
