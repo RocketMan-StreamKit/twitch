@@ -176,6 +176,8 @@ const applyRewardIdRemaps = async (
 /**
  * Recreates Twitch channel-point rewards that triggers still reference but
  * that no longer exist on Twitch, then remaps saved trigger value ids.
+ * When a reward with the same title already exists, bindings are remapped to
+ * that id without changing its cost (avoids fighting generate/update).
  * @returns Remapped old → new reward id pairs applied to storage.
  * @example
  * const remapped = await syncMissingChannelPointRewards();
@@ -202,6 +204,9 @@ export const syncMissingChannelPointRewards = async (): Promise<
   }
 
   const existingIds = new Set(listed.rewards.map(item => item.id));
+  const rewardsByTitle = new Map(
+    listed.rewards.map(item => [item.title, item] as const)
+  );
   const metaMap = readRewardMetaMap();
   const bindings = collectRedeemBindings(applied.categories);
   const replacements: Array<{ from: string; to: string }> = [];
@@ -220,21 +225,38 @@ export const syncMissingChannelPointRewards = async (): Promise<
       continue;
     }
 
-    const ensured = await TwitchApi.EnsureCustomReward(meta.title, meta.cost);
-    if (!ensured.success || !ensured.reward?.id) {
+    // Prefer remapping onto an existing same-title reward without changing its
+    // cost. EnsureCustomReward would overwrite cost and fight intentional
+    // generate/update flows that briefly leave applied triggers on the old id.
+    const existingByTitle = rewardsByTitle.get(meta.title);
+    if (existingByTitle?.id) {
+      existingIds.add(existingByTitle.id);
+      moveRewardMeta(binding.rewardId, existingByTitle.id, {
+        title: existingByTitle.title,
+        cost: existingByTitle.cost,
+      });
+      if (existingByTitle.id !== binding.rewardId) {
+        replacements.push({ from: binding.rewardId, to: existingByTitle.id });
+      }
+      continue;
+    }
+
+    const created = await TwitchApi.CreateCustomReward(meta.title, meta.cost);
+    if (!created.success || !created.reward?.id) {
       console.error(
         'Failed to recreate missing Twitch reward:',
         binding.rewardId,
-        ensured.message
+        created.message
       );
       continue;
     }
 
-    const newId = ensured.reward.id;
+    const newId = created.reward.id;
     existingIds.add(newId);
+    rewardsByTitle.set(created.reward.title, created.reward);
     moveRewardMeta(binding.rewardId, newId, {
-      title: ensured.reward.title,
-      cost: ensured.reward.cost,
+      title: created.reward.title,
+      cost: created.reward.cost,
     });
 
     if (newId !== binding.rewardId) {

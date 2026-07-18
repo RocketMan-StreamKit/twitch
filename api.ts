@@ -38,6 +38,8 @@ export type TwitchCustomReward = {
   title: string;
   cost: number;
   is_enabled: boolean;
+  /** When true, the reward is paused on Twitch and cannot be redeemed. */
+  is_paused?: boolean;
 };
 
 export type TwitchPinnedChatMessage = {
@@ -147,10 +149,10 @@ export const TwitchApi = new (class {
    * Proxies a Twitch API request using the addon OAuth token.
    * @param method HTTP method.
    * @param url Absolute Twitch API URL.
-   * @param body Optional JSON body for POST/PUT.
+   * @param body Optional JSON body for POST/PUT/PATCH.
    */
   async proxyTwitchApiRequest(
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     url: string,
     body?: unknown
   ): Promise<{
@@ -184,6 +186,13 @@ export const TwitchApi = new (class {
           break;
         case 'PUT':
           response = await network.request.put(url, body ?? {}, headers);
+          break;
+        case 'PATCH':
+          response = await (
+            network.request as typeof network.request & {
+              patch: typeof network.request.put;
+            }
+          ).patch(url, body ?? {}, headers);
           break;
         case 'DELETE':
           response = await network.request.delete(url, headers);
@@ -721,7 +730,11 @@ export const TwitchApi = new (class {
     });
 
     try {
-      const response = await network.request.put(
+      const response = await (
+        network.request as typeof network.request & {
+          patch: typeof network.request.put;
+        }
+      ).patch(
         `https://api.twitch.tv/helix/channel_points/custom_rewards?${query}`,
         { cost: normalizedCost },
         this.authHeaders()

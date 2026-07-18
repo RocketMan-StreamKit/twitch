@@ -79,7 +79,7 @@ Permissions are declared in `manifest.json`. Only use APIs that match granted pe
 
 | Permission | Purpose |
 | --- | --- |
-| `NETWORK_REQUEST` | HTTP requests (GET, POST, PUT, DELETE) |
+| `NETWORK_REQUEST` | HTTP requests (GET, POST, PUT, PATCH, DELETE) |
 | `NETWORK_WEBSOCKET` | Outbound WebSocket connections |
 | `WEB_END_POINTS` | Create HTTP endpoints for the addon |
 | `WEB_CONTENT` | Serve manifest-declared web page and static files |

@@ -17,7 +17,7 @@ type AddonRequestParams = {
   body?: unknown;
 };
 
-type TwitchApiMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+type TwitchApiMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 /**
  * Parses a Twitch API proxy response body when possible.
@@ -206,6 +206,14 @@ addons.onRequest('apiPost', async ({ fromAddonId, params }) =>
 addons.onRequest('apiPut', async ({ fromAddonId, params }) =>
   handleTwitchApiRequest(
     'PUT',
+    fromAddonId,
+    params as AddonRequestParams | undefined
+  )
+);
+
+addons.onRequest('apiPatch', async ({ fromAddonId, params }) =>
+  handleTwitchApiRequest(
+    'PATCH',
     fromAddonId,
     params as AddonRequestParams | undefined
   )
