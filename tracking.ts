@@ -7,6 +7,7 @@ import { startChatMonitor, stopChatMonitor } from './chat-monitor';
 import { PLATFORM } from './constants';
 import { TwitchEventSubClient } from './eventsub';
 import { syncMissingChannelPointRewards } from './reward-sync';
+import { syncOnlineRewards } from './reward-lifecycle';
 import { reloadSettings } from './settings';
 import { notifyConnectionStatus } from './status-notify';
 import {
@@ -77,9 +78,14 @@ export const startTwitchTracking = async () => {
     await startChatMonitor(user.id);
     await refreshViewerCount(user.id);
 
-    void syncMissingChannelPointRewards().catch(error => {
-      console.error('Failed to sync missing Twitch rewards on connect:', error);
-    });
+    void syncMissingChannelPointRewards()
+      .then(() => syncOnlineRewards())
+      .catch(error => {
+        console.error(
+          'Failed to sync Twitch channel-point rewards on connect:',
+          error
+        );
+      });
 
     void dashboard.onChatSend(async ({ text, system }) => {
       if (!broadcasterId) {

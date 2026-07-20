@@ -1,5 +1,6 @@
 import { TwitchApi } from './api';
 import { rememberRewardMeta } from './reward-meta';
+import { applyUnavailablePolicyToReward } from './reward-lifecycle';
 import { syncMissingChannelPointRewards } from './reward-sync';
 import { buildRewardTitle } from './reward-title';
 import { reloadSettings } from './settings';
@@ -100,7 +101,9 @@ events.On(
 
     const existingValueId = payload?.valueId?.trim();
     if (existingValueId) {
-      const updated = await TwitchApi.UpdateCustomReward(existingValueId, cost);
+      const updated = await TwitchApi.UpdateCustomReward(existingValueId, {
+        cost,
+      });
       if (updated.success && updated.reward?.id) {
         rememberRewardMeta(
           updated.reward.id,
@@ -199,13 +202,10 @@ events.On(
     }
 
     const settings = await reloadSettings();
-    if (!settings.deleteUnusedRewards) {
+    if (settings.rewardLifecycle === 'none') {
       return { success: true };
     }
 
-    const deleted = await TwitchApi.DeleteCustomReward(valueId);
-    return deleted
-      ? { success: true }
-      : { success: false, message: 'Failed to delete Twitch reward' };
+    return applyUnavailablePolicyToReward(valueId);
   }
 );

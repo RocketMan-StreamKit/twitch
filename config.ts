@@ -214,21 +214,60 @@ const buildConfigFields = (
       },
     },
     {
+      key: 'reward_lifecycle',
+      type: 'select',
+      default: 'none',
+      options: [
+        {
+          value: 'none',
+          label: {
+            en: 'Do nothing',
+            ru: 'Ничего не делать',
+            uk: 'Нічого не робити',
+          },
+        },
+        {
+          value: 'pause',
+          label: {
+            en: 'Pause on Twitch',
+            ru: 'Ставить на паузу на Twitch',
+            uk: 'Ставити на паузу на Twitch',
+          },
+        },
+        {
+          value: 'disable',
+          label: {
+            en: 'Disable on Twitch',
+            ru: 'Отключать на Twitch',
+            uk: 'Вимикати на Twitch',
+          },
+        },
+        {
+          value: 'delete',
+          label: {
+            en: 'Delete on Twitch',
+            ru: 'Удалять на Twitch',
+            uk: 'Видаляти на Twitch',
+          },
+        },
+      ],
+      editor: {
+        label: {
+          en: 'When a reward is no longer needed',
+          ru: 'Когда награда больше не нужна',
+          uk: 'Коли нагорода більше не потрібна',
+        },
+        description: {
+          en: 'Applies when you remove a trigger, disable a sound/hotkey, or close StreamKit / disable this addon. While StreamKit is connected, rewards used by active triggers are always forced enabled and unpaused (even if changed manually on Twitch).',
+          ru: 'Срабатывает при удалении триггера, выключении звука/хоткея или закрытии StreamKit / отключении аддона. Пока StreamKit подключён, награды активных триггеров всегда принудительно включаются и снимаются с паузы (даже если их меняли вручную на Twitch).',
+          uk: 'Спрацьовує при видаленні тригера, вимкненні звуку/хоткея або закритті StreamKit / вимкненні аддона. Поки StreamKit підключений, нагороди активних тригерів завжди примусово вмикаються і знімаються з паузи (навіть якщо їх змінювали вручну на Twitch).',
+        },
+      },
+    },
+    {
       key: 'delete_unused_rewards',
       type: 'boolean',
       default: false,
-      editor: {
-        label: {
-          en: 'Delete rewards when deleting triggers',
-          ru: 'Удалять награды при удалении триггеров',
-          uk: 'Видаляти нагороди при видаленні тригерів',
-        },
-        description: {
-          en: 'The reward is deleted automatically when you remove a trigger that uses it, if it is not referenced in any other trigger',
-          ru: 'Награда будет удаляться автоматически, если удалить триггер с ней, и в других триггерах эта награда не упоминается',
-          uk: 'Нагорода буде видалятися автоматично, якщо видалити тригер із нею, і в інших тригерах ця награда не згадується',
-        },
-      },
     },
     {
       key: 'add_reward_emoji',

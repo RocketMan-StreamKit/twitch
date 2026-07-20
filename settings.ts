@@ -1,3 +1,6 @@
+/** Action applied to Twitch rewards when they become unavailable (unbound / soft stop). */
+export type RewardLifecycleAction = 'none' | 'pause' | 'disable' | 'delete';
+
 export type TwitchAddonSettings = {
   showModeratorActions: boolean;
   showJoinLeave: boolean;
@@ -9,12 +12,23 @@ export type TwitchAddonSettings = {
   watchStreakMinCount: number;
   showRewardRedemption: boolean;
   speakHighlightedMessages: boolean;
-  deleteUnusedRewards: boolean;
+  /**
+   * What to do with channel-point rewards when they are no longer needed
+   * (trigger removed, sound/hotkey disabled, or StreamKit/addon shutting down).
+   */
+  rewardLifecycle: RewardLifecycleAction;
   addRewardEmoji: boolean;
   showFirstUserMessage: boolean;
   showChatSubscriptions: boolean;
   colorizeMeMessages: boolean;
 };
+
+const REWARD_LIFECYCLE_ACTIONS: readonly RewardLifecycleAction[] = [
+  'none',
+  'pause',
+  'disable',
+  'delete',
+];
 
 const DEFAULTS: TwitchAddonSettings = {
   showModeratorActions: true,
@@ -27,11 +41,34 @@ const DEFAULTS: TwitchAddonSettings = {
   watchStreakMinCount: 3,
   showRewardRedemption: true,
   speakHighlightedMessages: false,
-  deleteUnusedRewards: false,
+  rewardLifecycle: 'none',
   addRewardEmoji: true,
   showFirstUserMessage: true,
   showChatSubscriptions: true,
   colorizeMeMessages: true,
+};
+
+/**
+ * Resolves the reward lifecycle setting, migrating the legacy boolean key.
+ * @param params Raw addon config params.
+ * @example
+ * resolveRewardLifecycle({ reward_lifecycle: 'pause' }); // 'pause'
+ * resolveRewardLifecycle({ delete_unused_rewards: true }); // 'delete'
+ */
+const resolveRewardLifecycle = (
+  params: Record<string, unknown>
+): RewardLifecycleAction => {
+  const raw = params.reward_lifecycle;
+  if (
+    typeof raw === 'string' &&
+    REWARD_LIFECYCLE_ACTIONS.includes(raw as RewardLifecycleAction)
+  ) {
+    return raw as RewardLifecycleAction;
+  }
+  if (params.delete_unused_rewards === true) {
+    return 'delete';
+  }
+  return DEFAULTS.rewardLifecycle;
 };
 
 const readPositiveInt = (value: unknown, fallback: number) => {
@@ -65,7 +102,7 @@ export const reloadSettings = async (): Promise<TwitchAddonSettings> => {
     ),
     showRewardRedemption: params.show_reward_redemption !== false,
     speakHighlightedMessages: params.speak_highlighted_messages === true,
-    deleteUnusedRewards: params.delete_unused_rewards === true,
+    rewardLifecycle: resolveRewardLifecycle(params),
     addRewardEmoji: params.add_reward_emoji !== false,
     showFirstUserMessage: params.show_first_user_message !== false,
     showChatSubscriptions: params.show_chat_subscriptions !== false,

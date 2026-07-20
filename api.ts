@@ -694,15 +694,20 @@ export const TwitchApi = new (class {
   }
 
   /**
-   * Updates the channel points cost of an existing custom reward on Twitch.
+   * Updates fields of an existing custom reward on Twitch.
    * @param rewardId Twitch reward id.
-   * @param cost New channel points cost (minimum 1).
+   * @param patch Fields to update (cost, is_enabled, and/or is_paused).
    * @example
-   * const result = await TwitchApi.UpdateCustomReward('reward-id', 500);
+   * const result = await TwitchApi.UpdateCustomReward('reward-id', { cost: 500 });
+   * await TwitchApi.UpdateCustomReward('reward-id', { is_paused: true });
    */
   async UpdateCustomReward(
     rewardId: string,
-    cost: number
+    patch: {
+      cost?: number;
+      is_enabled?: boolean;
+      is_paused?: boolean;
+    }
   ): Promise<{
     success: boolean;
     reward?: TwitchCustomReward;
@@ -723,7 +728,28 @@ export const TwitchApi = new (class {
       return { success: false, message: 'Reward id is required' };
     }
 
-    const normalizedCost = Math.max(1, Math.floor(cost));
+    const body: {
+      cost?: number;
+      is_enabled?: boolean;
+      is_paused?: boolean;
+    } = {};
+    if (typeof patch.cost === 'number' && Number.isFinite(patch.cost)) {
+      body.cost = Math.max(1, Math.floor(patch.cost));
+    }
+    if (typeof patch.is_enabled === 'boolean') {
+      body.is_enabled = patch.is_enabled;
+    }
+    if (typeof patch.is_paused === 'boolean') {
+      body.is_paused = patch.is_paused;
+    }
+    if (
+      body.cost === undefined &&
+      body.is_enabled === undefined &&
+      body.is_paused === undefined
+    ) {
+      return { success: false, message: 'No reward fields to update' };
+    }
+
     const query = new URLSearchParams({
       broadcaster_id: broadcaster.id,
       id: trimmedRewardId,
@@ -736,7 +762,7 @@ export const TwitchApi = new (class {
         }
       ).patch(
         `https://api.twitch.tv/helix/channel_points/custom_rewards?${query}`,
-        { cost: normalizedCost },
+        body,
         this.authHeaders()
       );
       const parsed = this.parseHelixBody<{ data?: TwitchCustomReward[] }>(
@@ -804,7 +830,9 @@ export const TwitchApi = new (class {
       return { success: true, reward: existing };
     }
 
-    const updated = await this.UpdateCustomReward(existing.id, normalizedCost);
+    const updated = await this.UpdateCustomReward(existing.id, {
+      cost: normalizedCost,
+    });
     if (updated.success && updated.reward) {
       return updated;
     }
