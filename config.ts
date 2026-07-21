@@ -43,15 +43,40 @@ const formatBotDisconnectLabel = (login: string) => ({
 });
 
 /**
+ * Strips `editor` from one field and recursively from nested `spoiler` / `page` items.
+ * @param field Schema field that should stay in storage but remain hidden in the UI.
+ * @example
+ * withoutEditor({
+ *   key: 'chat',
+ *   type: 'page',
+ *   editor: { label: { en: 'Chat' } },
+ *   items: [{ key: 'show_polls', type: 'boolean', editor: { label: { en: 'Polls' } } }],
+ * });
+ */
+const withoutEditor = (field: AddonConfigField): AddonConfigField => {
+  const next: AddonConfigField = { ...field, editor: undefined };
+  if (
+    (field.type === 'spoiler' || field.type === 'page') &&
+    Array.isArray(field.items)
+  ) {
+    next.items = withoutEditors(field.items as AddonConfigSchema);
+  }
+  return next;
+};
+
+/**
  * Returns schema fields without `editor` blocks so values persist but stay hidden in the UI.
+ * Recurses into nested `spoiler` / `page` containers.
  * @param fields Addon config fields that should remain in storage when not shown in settings.
+ * @example
+ * withoutEditors([{ key: 'debug', type: 'boolean', editor: { label: { en: 'Debug' } } }]);
  */
 const withoutEditors = (fields: AddonConfigSchema): AddonConfigSchema =>
   fields.map(entry => {
     if (Array.isArray(entry)) {
-      return entry.map(field => ({ ...field, editor: undefined }));
+      return entry.map(withoutEditor);
     }
-    return { ...entry, editor: undefined };
+    return withoutEditor(entry);
   });
 
 /**
@@ -87,7 +112,7 @@ const buildConfigFields = (
   bot_access_token?: string,
   botLogin?: string
 ): AddonConfigSchema => {
-  const chatSettings: AddonConfigSchema = [
+  const chatEventFields: AddonConfigSchema = [
     {
       key: 'show_moderator_actions',
       type: 'boolean',
@@ -197,6 +222,47 @@ const buildConfigFields = (
       },
     },
     {
+      key: 'show_first_user_message',
+      type: 'boolean',
+      default: true,
+      editor: {
+        label: {
+          en: 'Show first user messages in chat',
+          ru: 'Отображать первые сообщения зрителей в чате',
+          uk: 'Відображати перші повідомлення глядачів у чаті',
+        },
+      },
+    },
+    {
+      key: 'show_chat_subscriptions',
+      type: 'boolean',
+      default: true,
+      editor: {
+        label: {
+          en: 'Show subscriptions in chat',
+          ru: 'Отображать подписки в чате',
+          uk: 'Відображати підписки в чаті',
+        },
+      },
+    },
+    {
+      key: 'colorize_me_messages',
+      type: 'boolean',
+      default: true,
+      editor: {
+        label: {
+          en: 'Color /me messages with nickname color',
+          ru: 'Окрашивать сообщения /me цветом ника',
+          uk: 'Забарвлювати повідомлення /me кольором ніка',
+        },
+        description: {
+          en: 'When a viewer uses /me, show the message text in their nickname color',
+          ru: 'Когда зритель использует /me, текст сообщения показывается цветом его ника',
+          uk: 'Коли глядач використовує /me, текст повідомлення показується кольором його ніка',
+        },
+      },
+    },
+    {
       key: 'speak_highlighted_messages',
       type: 'boolean',
       default: false,
@@ -213,6 +279,9 @@ const buildConfigFields = (
         },
       },
     },
+  ];
+
+  const rewardFields: AddonConfigSchema = [
     {
       key: 'reward_lifecycle',
       type: 'select',
@@ -286,48 +355,39 @@ const buildConfigFields = (
         },
       },
     },
-    {
-      key: 'show_first_user_message',
-      type: 'boolean',
-      default: true,
-      editor: {
-        label: {
-          en: 'Show first user messages in chat',
-          ru: 'Отображать первые сообщения зрителей в чате',
-          uk: 'Відображати перші повідомлення глядачів у чаті',
-        },
-      },
-    },
-    {
-      key: 'show_chat_subscriptions',
-      type: 'boolean',
-      default: true,
-      editor: {
-        label: {
-          en: 'Show subscriptions in chat',
-          ru: 'Отображать подписки в чате',
-          uk: 'Відображати підписки в чаті',
-        },
-      },
-    },
-    {
-      key: 'colorize_me_messages',
-      type: 'boolean',
-      default: true,
-      editor: {
-        label: {
-          en: 'Color /me messages with nickname color',
-          ru: 'Окрашивать сообщения /me цветом ника',
-          uk: 'Забарвлювати повідомлення /me кольором ніка',
-        },
-        description: {
-          en: 'When a viewer uses /me, show the message text in their nickname color',
-          ru: 'Когда зритель использует /me, текст сообщения показывается цветом его ника',
-          uk: 'Коли глядач використовує /me, текст повідомлення показується кольором його ніка',
-        },
-      },
-    },
   ];
+
+  const chatSettingsPage: AddonConfigField = {
+    key: 'chat_settings',
+    type: 'page',
+    editor: {
+      label: {
+        en: 'Chat settings',
+        ru: 'Настройки чата',
+        uk: 'Налаштування чату',
+      },
+      description: {
+        en: 'Chat event display, TTS, and channel point rewards',
+        ru: 'Отображение событий чата, TTS и награды за баллы канала',
+        uk: 'Відображення подій чату, TTS і нагороди за бали каналу',
+      },
+    },
+    items: [
+      ...chatEventFields,
+      {
+        key: 'channel_point_rewards',
+        type: 'spoiler',
+        editor: {
+          label: {
+            en: 'Channel point rewards',
+            ru: 'Награды за баллы канала',
+            uk: 'Нагороди за бали каналу',
+          },
+        },
+        items: rewardFields,
+      },
+    ],
+  };
 
   const mainAccountFields: AddonConfigSchema = [
     authUrlField('auth_url', {
@@ -416,9 +476,36 @@ const buildConfigFields = (
       type: 'object',
       default: {},
     },
-    ...mainAccountFields,
-    ...botAccountFields,
-    ...(access_token ? chatSettings : withoutEditors(chatSettings)),
+    {
+      key: 'main_account',
+      type: 'spoiler',
+      editor: {
+        label: {
+          en: 'Main account',
+          ru: 'Основной аккаунт',
+          uk: 'Основний акаунт',
+        },
+      },
+      items: mainAccountFields,
+    },
+    {
+      key: 'bot_account',
+      type: 'spoiler',
+      editor: {
+        label: {
+          en: 'Bot account',
+          ru: 'Аккаунт бота',
+          uk: 'Акаунт бота',
+        },
+        description: {
+          en: 'Optional second login for sending chat messages',
+          ru: 'Опциональный второй вход для отправки сообщений в чат',
+          uk: 'Опційний другий вхід для надсилання повідомлень у чат',
+        },
+      },
+      items: botAccountFields,
+    },
+    access_token ? chatSettingsPage : withoutEditor(chatSettingsPage),
   ];
 };
 
