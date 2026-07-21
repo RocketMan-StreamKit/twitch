@@ -494,14 +494,14 @@ const buildConfigFields = (
       default: false,
       editor: {
         label: {
-          en: 'Send shoutout on raid (Twitch API)',
-          ru: 'Отправлять shoutout при рейде (API Twitch)',
-          uk: 'Надсилати shoutout під час рейду (API Twitch)',
+          en: 'Send shoutout on raid',
+          ru: 'Отправлять shoutout при рейде',
+          uk: 'Надсилати shoutout під час рейду',
         },
         description: {
-          en: 'Calls the Twitch Helix Send Shoutout API for the raiding channel (not the /shoutout chat command). Requires moderator:manage:shoutouts.',
-          ru: 'Вызывает Helix API Send Shoutout для канала-рейдера (не команду чата /shoutout). Нужен scope moderator:manage:shoutouts.',
-          uk: 'Викликає Helix API Send Shoutout для каналу-рейдера (не команду чату /shoutout). Потрібен scope moderator:manage:shoutouts.',
+          en: 'Sends a /shoutout mentioning the raiding channel',
+          ru: 'Отправляет /shoutout с упоминанием канала-рейдера',
+          uk: 'Надсилає /shoutout зі згадкою каналу-рейдера',
         },
       },
     },
