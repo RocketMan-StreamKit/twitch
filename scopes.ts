@@ -22,6 +22,8 @@ export const SCOPES = [
   'moderator:read:vips',
   'channel:read:polls',
   'moderator:read:shoutouts',
+  'moderator:manage:shoutouts',
+  'clips:edit',
 ] as const;
 
 /** OAuth scopes required for the optional bot account (chat send only). */

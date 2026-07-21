@@ -634,9 +634,21 @@ export const TwitchApi = new (class {
     }
   }
 
+  /**
+   * Creates a channel-point custom reward on Twitch.
+   * @param title Reward title (max 45 characters).
+   * @param cost Channel points cost (minimum 1).
+   * @param options Optional create fields such as background color (`#RRGGBB`).
+   * @example
+   * const created = await TwitchApi.CreateCustomReward('Hydrate', 100);
+   * const colorful = await TwitchApi.CreateCustomReward('Hydrate', 100, {
+   *   backgroundColor: '#9146FF',
+   * });
+   */
   async CreateCustomReward(
     title: string,
-    cost = 1
+    cost = 1,
+    options?: { backgroundColor?: string }
   ): Promise<{
     success: boolean;
     reward?: TwitchCustomReward;
@@ -657,16 +669,30 @@ export const TwitchApi = new (class {
       return { success: false, message: 'Reward title is required' };
     }
 
+    const body: {
+      broadcaster_id: string;
+      title: string;
+      cost: number;
+      is_user_input_required: boolean;
+      is_enabled: boolean;
+      background_color?: string;
+    } = {
+      broadcaster_id: broadcaster.id,
+      title: trimmedTitle,
+      cost: Math.max(1, Math.floor(cost)),
+      is_user_input_required: false,
+      is_enabled: true,
+    };
+
+    const backgroundColor = options?.backgroundColor?.trim();
+    if (backgroundColor) {
+      body.background_color = backgroundColor;
+    }
+
     try {
       const response = await network.request.post(
         'https://api.twitch.tv/helix/channel_points/custom_rewards',
-        {
-          broadcaster_id: broadcaster.id,
-          title: trimmedTitle,
-          cost: Math.max(1, Math.floor(cost)),
-          is_user_input_required: false,
-          is_enabled: true,
-        },
+        body,
         this.authHeaders()
       );
       const parsed = this.parseHelixBody<{ data?: TwitchCustomReward[] }>(
@@ -794,12 +820,17 @@ export const TwitchApi = new (class {
    * When a matching reward already exists, its cost is updated to the requested value.
    * @param title Reward title (max 45 characters).
    * @param cost Channel points cost (minimum 1).
+   * @param options Optional create-only fields such as background color.
    * @example
    * const result = await TwitchApi.EnsureCustomReward('Hydrate', 100);
+   * const colorful = await TwitchApi.EnsureCustomReward('Hydrate', 100, {
+   *   backgroundColor: '#9146FF',
+   * });
    */
   async EnsureCustomReward(
     title: string,
-    cost = 1
+    cost = 1,
+    options?: { backgroundColor?: string }
   ): Promise<{
     success: boolean;
     reward?: TwitchCustomReward;
@@ -823,7 +854,7 @@ export const TwitchApi = new (class {
       reward => reward.title === trimmedTitle
     );
     if (!existing) {
-      return this.CreateCustomReward(trimmedTitle, normalizedCost);
+      return this.CreateCustomReward(trimmedTitle, normalizedCost, options);
     }
 
     if (existing.cost === normalizedCost) {
@@ -839,7 +870,7 @@ export const TwitchApi = new (class {
 
     const deleted = await this.DeleteCustomReward(existing.id);
     if (deleted) {
-      return this.CreateCustomReward(trimmedTitle, normalizedCost);
+      return this.CreateCustomReward(trimmedTitle, normalizedCost, options);
     }
 
     return {
@@ -951,6 +982,197 @@ export const TwitchApi = new (class {
     } catch (error) {
       console.error('Failed to delete Twitch custom reward:', error);
       return false;
+    }
+  }
+
+  /**
+   * Creates a clip from the live broadcaster stream.
+   * @param broadcasterId Twitch user id of the channel to clip.
+   * @param options Optional clip title and duration (5–60 seconds, default 30).
+   * @example
+   * const clip = await TwitchApi.CreateClip('123', { duration: 30 });
+   */
+  async CreateClip(
+    broadcasterId: string,
+    options?: { title?: string; duration?: number }
+  ): Promise<{
+    success: boolean;
+    id?: string;
+    editUrl?: string;
+    message?: string;
+  }> {
+    const accessToken = this.accessToken;
+    if (!accessToken) {
+      return { success: false, message: 'Twitch is not authorized' };
+    }
+
+    const trimmedBroadcasterId = broadcasterId.trim();
+    if (!trimmedBroadcasterId) {
+      return { success: false, message: 'Broadcaster id is required' };
+    }
+
+    const query = new URLSearchParams({
+      broadcaster_id: trimmedBroadcasterId,
+    });
+    const title = options?.title?.trim();
+    if (title) {
+      query.set('title', title.slice(0, 100));
+    }
+    if (
+      typeof options?.duration === 'number' &&
+      Number.isFinite(options.duration)
+    ) {
+      const duration = Math.min(60, Math.max(5, options.duration));
+      query.set('duration', String(Math.round(duration * 10) / 10));
+    }
+
+    try {
+      const response = await network.request.post(
+        `https://api.twitch.tv/helix/clips?${query}`,
+        {},
+        this.authHeaders()
+      );
+      const parsed = this.parseHelixBody<{
+        data?: Array<{ id?: string; edit_url?: string }>;
+      }>(response, 'Failed to create Twitch clip');
+      if (!parsed.ok) {
+        return { success: false, message: parsed.message };
+      }
+
+      const clip = parsed.body.data?.[0];
+      if (!clip?.id) {
+        return { success: false, message: 'Twitch did not return clip id' };
+      }
+
+      return {
+        success: true,
+        id: clip.id,
+        editUrl: clip.edit_url,
+      };
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to create Twitch clip';
+      console.error('Failed to create Twitch clip:', message);
+      return { success: false, message };
+    }
+  }
+
+  /**
+   * Fetches a single clip by id via Get Clips.
+   * @param clipId Twitch clip id / slug returned by Create Clip.
+   * @example
+   * const clip = await TwitchApi.GetClip('AwkwardHelplessSalamanderSwiftRage');
+   */
+  async GetClip(clipId: string): Promise<{
+    success: boolean;
+    clip?: { id: string; url: string; title?: string };
+    message?: string;
+  }> {
+    const accessToken = this.accessToken;
+    if (!accessToken) {
+      return { success: false, message: 'Twitch is not authorized' };
+    }
+
+    const trimmedClipId = clipId.trim();
+    if (!trimmedClipId) {
+      return { success: false, message: 'Clip id is required' };
+    }
+
+    try {
+      const query = new URLSearchParams({ id: trimmedClipId });
+      const response = await network.request.get(
+        `https://api.twitch.tv/helix/clips?${query}`,
+        this.authHeaders()
+      );
+      const parsed = this.parseHelixBody<{
+        data?: Array<{ id?: string; url?: string; title?: string }>;
+      }>(response, 'Failed to fetch Twitch clip');
+      if (!parsed.ok) {
+        return { success: false, message: parsed.message };
+      }
+
+      const clip = parsed.body.data?.[0];
+      if (!clip?.id || !clip.url) {
+        return { success: false, message: 'Clip not ready yet' };
+      }
+
+      return {
+        success: true,
+        clip: {
+          id: clip.id,
+          url: clip.url,
+          title: clip.title,
+        },
+      };
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to fetch Twitch clip';
+      console.error('Failed to fetch Twitch clip:', message);
+      return { success: false, message };
+    }
+  }
+
+  /**
+   * Sends a Helix shoutout to another broadcaster (not the /shoutout chat command).
+   * @param fromBroadcasterId Channel sending the shoutout (usually the streamer).
+   * @param toBroadcasterId Channel receiving the shoutout.
+   * @param moderatorId Token user id (broadcaster or moderator); must match the OAuth token.
+   * @example
+   * await TwitchApi.SendShoutout('111', '222', '111');
+   */
+  async SendShoutout(
+    fromBroadcasterId: string,
+    toBroadcasterId: string,
+    moderatorId: string
+  ): Promise<{ success: boolean; message?: string }> {
+    const accessToken = this.accessToken;
+    if (!accessToken) {
+      return { success: false, message: 'Twitch is not authorized' };
+    }
+
+    const fromId = fromBroadcasterId.trim();
+    const toId = toBroadcasterId.trim();
+    const modId = moderatorId.trim();
+    if (!fromId || !toId || !modId) {
+      return { success: false, message: 'Shoutout ids are required' };
+    }
+    if (fromId === toId) {
+      return { success: false, message: 'Cannot shoutout your own channel' };
+    }
+
+    const query = new URLSearchParams({
+      from_broadcaster_id: fromId,
+      to_broadcaster_id: toId,
+      moderator_id: modId,
+    });
+
+    try {
+      const response = await network.request.post(
+        `https://api.twitch.tv/helix/chat/shoutouts?${query}`,
+        {},
+        this.authHeaders()
+      );
+      const trimmed = response?.trim() ?? '';
+      if (!trimmed) {
+        return { success: true };
+      }
+
+      const parsed = this.parseHelixBody<Record<string, unknown>>(
+        response,
+        'Failed to send Twitch shoutout'
+      );
+      if (!parsed.ok) {
+        return { success: false, message: parsed.message };
+      }
+
+      return { success: true };
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Failed to send Twitch shoutout';
+      console.error('Failed to send Twitch shoutout:', message);
+      return { success: false, message };
     }
   }
 

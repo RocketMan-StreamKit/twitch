@@ -355,6 +355,135 @@ const buildConfigFields = (
         },
       },
     },
+    {
+      key: 'random_reward_color',
+      type: 'boolean',
+      default: false,
+      editor: {
+        label: {
+          en: 'Random color for each reward',
+          ru: 'Случайный цвет для каждой награды',
+          uk: 'Випадковий колір для кожної нагороди',
+        },
+        description: {
+          en: 'When enabled, each newly generated channel-point reward gets a random background color on Twitch',
+          ru: 'Когда включено, при генерации каждой новой награды за баллы канала задаётся случайный цвет фона на Twitch',
+          uk: 'Коли увімкнено, під час генерації кожної нової нагороди за бали каналу задається випадковий колір фону на Twitch',
+        },
+      },
+    },
+  ];
+
+  const clipAutomationFields: AddonConfigSchema = [
+    {
+      key: 'auto_clip_on_overlay',
+      type: 'boolean',
+      default: false,
+      editor: {
+        label: {
+          en: 'Auto-create clip on overlay trigger',
+          ru: 'Автоматически создавать клип при вызове оверлея',
+          uk: 'Автоматично створювати кліп при виклику оверлею',
+        },
+        description: {
+          en: 'When an event that shows an overlay appears, a clip is created automatically',
+          ru: 'При появлении события с отображением оверлея автоматически создаётся клип',
+          uk: 'При появі події з показом оверлею автоматично створюється кліп',
+        },
+      },
+    },
+    {
+      key: 'auto_clip_duration_seconds',
+      type: 'number',
+      default: 30,
+      editor: {
+        validation: {
+          min: 15,
+          max: 60,
+        },
+        label: {
+          en: 'Clip length (seconds)',
+          ru: 'Длина клипа (секунды)',
+          uk: 'Довжина кліпу (секунди)',
+        },
+        description: {
+          en: 'Clip duration sent to Twitch Create Clip (15–60). Default is 30',
+          ru: 'Длительность клипа для Twitch Create Clip (15–60). По умолчанию 30',
+          uk: 'Тривалість кліпу для Twitch Create Clip (15–60). За замовчуванням 30',
+        },
+      },
+    },
+    {
+      key: 'auto_clip_post_chat',
+      type: 'boolean',
+      default: true,
+      editor: {
+        label: {
+          en: 'Post auto-created clip link to chat',
+          ru: 'Отправлять ссылку на авто-клип в чат',
+          uk: 'Надсилати посилання на авто-кліп у чат',
+        },
+        description: {
+          en: 'After an auto-created clip is ready, send its URL to Twitch chat (uses the bot account when connected)',
+          ru: 'После готовности автоматически созданного клипа отправляет его URL в чат Twitch (через аккаунт бота, если он подключён)',
+          uk: 'Після готовності автоматично створеного кліпу надсилає його URL у чат Twitch (через акаунт бота, якщо він підключений)',
+        },
+      },
+    },
+  ];
+
+  const raidShoutoutFields: AddonConfigSchema = [
+    {
+      key: 'auto_shoutout_on_raid',
+      type: 'boolean',
+      default: false,
+      editor: {
+        label: {
+          en: 'Send shoutout on raid (Twitch API)',
+          ru: 'Отправлять shoutout при рейде (API Twitch)',
+          uk: 'Надсилати shoutout під час рейду (API Twitch)',
+        },
+        description: {
+          en: 'Calls the Twitch Helix Send Shoutout API for the raiding channel (not the /shoutout chat command). Requires moderator:manage:shoutouts.',
+          ru: 'Вызывает Helix API Send Shoutout для канала-рейдера (не команду чата /shoutout). Нужен scope moderator:manage:shoutouts.',
+          uk: 'Викликає Helix API Send Shoutout для каналу-рейдера (не команду чату /shoutout). Потрібен scope moderator:manage:shoutouts.',
+        },
+      },
+    },
+    {
+      key: 'auto_shoutout_min_viewers',
+      type: 'number',
+      default: 10,
+      editor: {
+        label: {
+          en: 'Minimum raiders for auto-shoutout',
+          ru: 'Минимум рейдеров для авто-shoutout',
+          uk: 'Мінімум рейдерів для авто-shoutout',
+        },
+        description: {
+          en: 'Auto-shoutout runs only when the raid brings at least this many viewers',
+          ru: 'Авто-shoutout срабатывает только если в рейде не меньше указанного числа зрителей',
+          uk: 'Авто-shoutout спрацьовує лише якщо в рейді не менше вказаної кількості глядачів',
+        },
+      },
+    },
+    {
+      key: 'auto_shoutout_delay_seconds',
+      type: 'number',
+      default: 10,
+      editor: {
+        label: {
+          en: 'Delay before auto-shoutout (seconds)',
+          ru: 'Задержка перед авто-shoutout (секунды)',
+          uk: 'Затримка перед авто-shoutout (секунди)',
+        },
+        description: {
+          en: 'How long to wait after the raid notification before calling the shoutout API',
+          ru: 'Сколько секунд ждать после оповещения о рейде перед вызовом API shoutout',
+          uk: 'Скільки секунд чекати після сповіщення про рейд перед викликом API shoutout',
+        },
+      },
+    },
   ];
 
   const chatSettingsPage: AddonConfigField = {
@@ -383,8 +512,66 @@ const buildConfigFields = (
             ru: 'Награды за баллы канала',
             uk: 'Нагороди за бали каналу',
           },
+          description: {
+            en: 'Lifecycle policy and options applied when generating rewards',
+            ru: 'Политика жизненного цикла и опции при генерации наград',
+            uk: 'Політика життєвого циклу та опції під час генерації нагород',
+          },
         },
         items: rewardFields,
+      },
+    ],
+  };
+
+  const automationSettingsPage: AddonConfigField = {
+    key: 'automation_settings',
+    type: 'page',
+    editor: {
+      label: {
+        en: 'Automation',
+        ru: 'Автоматизация',
+        uk: 'Автоматизація',
+      },
+      description: {
+        en: 'Auto clips for overlay triggers and shoutouts for incoming raids',
+        ru: 'Авто-клипы при вызове оверлея и shoutout при входящих рейдах',
+        uk: 'Авто-кліпи при виклику оверлею та shoutout під час вхідних рейдів',
+      },
+    },
+    items: [
+      {
+        key: 'auto_clips',
+        type: 'spoiler',
+        editor: {
+          label: {
+            en: 'Auto clips',
+            ru: 'Авто-клипы',
+            uk: 'Авто-кліпи',
+          },
+          description: {
+            en: 'Create and optionally share clips when overlays fire from latest events',
+            ru: 'Создание и опциональная публикация клипов при срабатывании оверлеев из последних событий',
+            uk: 'Створення та опційна публікація кліпів при спрацюванні оверлеїв з останніх подій',
+          },
+        },
+        items: clipAutomationFields,
+      },
+      {
+        key: 'auto_raid_shoutout',
+        type: 'spoiler',
+        editor: {
+          label: {
+            en: 'Raid shoutout',
+            ru: 'Shoutout при рейде',
+            uk: 'Shoutout під час рейду',
+          },
+          description: {
+            en: 'Automatically shout out raiding channels via the Twitch API',
+            ru: 'Автоматический shoutout каналам-рейдерам через API Twitch',
+            uk: 'Автоматичний shoutout каналам-рейдерам через API Twitch',
+          },
+        },
+        items: raidShoutoutFields,
       },
     ],
   };
@@ -506,6 +693,9 @@ const buildConfigFields = (
       items: botAccountFields,
     },
     access_token ? chatSettingsPage : withoutEditor(chatSettingsPage),
+    access_token
+      ? automationSettingsPage
+      : withoutEditor(automationSettingsPage),
   ];
 };
 

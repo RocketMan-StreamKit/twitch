@@ -1,3 +1,4 @@
+import { scheduleAutoShoutoutOnRaid } from './auto-shoutout';
 import {
   pushFramedSystemChatNotification,
   pushShoutoutChatNotification,
@@ -44,7 +45,10 @@ const readWatchStreakPayload = (event: ChatNotificationEvent) => {
   if (!payload || typeof payload !== 'object') {
     return null;
   }
-  return payload as { streak_count?: unknown; channel_points_awarded?: unknown };
+  return payload as {
+    streak_count?: unknown;
+    channel_points_awarded?: unknown;
+  };
 };
 
 const chatNotificationMessageId = (messageId: string, noticeType: string) =>
@@ -81,15 +85,24 @@ export const handleChatNotificationEvent = async (
   }
 
   if (noticeType === 'raid' || noticeType === 'shared_chat_raid') {
-    if (!settings.showChatRaid) {
-      return;
-    }
     const raid = readRaidPayload(event, noticeType);
     const viewerCount = readNumber(
       raid && typeof raid === 'object'
         ? (raid as { viewer_count?: unknown }).viewer_count
         : 0
     );
+
+    if (noticeType === 'raid') {
+      void scheduleAutoShoutoutOnRaid({
+        broadcasterId: readString(event.broadcaster_user_id),
+        raiderUserId: chatterUserId,
+        viewerCount,
+      });
+    }
+
+    if (!settings.showChatRaid) {
+      return;
+    }
     if (viewerCount < settings.chatRaidMinViewers) {
       return;
     }

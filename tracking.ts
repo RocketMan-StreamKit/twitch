@@ -1,4 +1,6 @@
 import { TwitchApi } from './api';
+import { handleAutoClipRecord, resetAutoClipState } from './auto-clip';
+import { resetAutoShoutoutState } from './auto-shoutout';
 import {
   resolveDashboardChatSender,
   sendChatMessageWithCredentials,
@@ -11,7 +13,6 @@ import { syncOnlineRewards } from './reward-lifecycle';
 import { reloadSettings } from './settings';
 import { notifyConnectionStatus } from './status-notify';
 import {
-  onStreamOffline,
   refreshViewerCount,
   reportViewerOffline,
   stopViewerCountPolling,
@@ -104,6 +105,13 @@ export const startTwitchTracking = async () => {
         throw new Error('Twitch chat message was not sent');
       }
     });
+
+    void dashboard.onRecord(payload => {
+      if (!broadcasterId) {
+        return;
+      }
+      handleAutoClipRecord(payload, broadcasterId);
+    });
   } catch (error) {
     console.error('Twitch tracking failed to start:', error);
     status.Update({ current: 'error' });
@@ -116,6 +124,9 @@ export const startTwitchTracking = async () => {
 
 export const stopTwitchTracking = (options?: { notify?: boolean }) => {
   void dashboard.offChatSend();
+  void dashboard.offRecord();
+  resetAutoClipState();
+  resetAutoShoutoutState();
   stopChatMonitor();
   eventSub?.stop();
   eventSub = null;

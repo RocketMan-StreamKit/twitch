@@ -1,6 +1,7 @@
 import { TwitchApi } from './api';
 import { rememberRewardMeta } from './reward-meta';
 import { applyUnavailablePolicyToReward } from './reward-lifecycle';
+import { randomRewardBackgroundColor } from './reward-color';
 import { syncMissingChannelPointRewards } from './reward-sync';
 import { buildRewardTitle } from './reward-title';
 import { reloadSettings } from './settings';
@@ -165,7 +166,13 @@ events.On(
       addEmoji: settings.addRewardEmoji,
     });
 
-    const ensured = await TwitchApi.EnsureCustomReward(rewardTitle, cost);
+    const ensured = await TwitchApi.EnsureCustomReward(
+      rewardTitle,
+      cost,
+      settings.randomRewardColor
+        ? { backgroundColor: randomRewardBackgroundColor() }
+        : undefined
+    );
     if (!ensured.success || !ensured.reward?.id) {
       return {
         success: false,
