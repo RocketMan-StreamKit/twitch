@@ -123,6 +123,11 @@ const buildConfigFields = (
           ru: 'Отображать действия модератора',
           uk: 'Відображати дії модератора',
         },
+        description: {
+          en: 'Show timeouts, bans, and other moderator actions in the chat feed',
+          ru: 'Показывать таймауты, баны и другие действия модераторов в ленте чата',
+          uk: 'Показувати таймаути, бани та інші дії модераторів у стрічці чату',
+        },
       },
     },
     {
@@ -134,6 +139,11 @@ const buildConfigFields = (
           en: 'Show join/leave events',
           ru: 'Отображать вход/выход из чата',
           uk: 'Відображати вхід/вихід з чату',
+        },
+        description: {
+          en: 'Notify when viewers join or leave the chat (can be noisy on large streams)',
+          ru: 'Уведомлять о входе и выходе зрителей из чата (на больших стримах может быть шумно)',
+          uk: 'Сповіщати про вхід і вихід глядачів з чату (на великих стрімах може бути шумно)',
         },
       },
     },
@@ -147,6 +157,11 @@ const buildConfigFields = (
           ru: 'Отображать опросы',
           uk: 'Відображати опитування',
         },
+        description: {
+          en: 'Show channel poll start and end events in the chat feed',
+          ru: 'Показывать в ленте чата начало и завершение опросов канала',
+          uk: 'Показувати у стрічці чату початок і завершення опитувань каналу',
+        },
       },
     },
     {
@@ -158,6 +173,11 @@ const buildConfigFields = (
           en: 'Show channel raids in chat',
           ru: 'Отображать рейды канала в чате',
           uk: 'Відображати рейди каналу в чаті',
+        },
+        description: {
+          en: 'Show incoming raid notifications in the chat feed',
+          ru: 'Показывать уведомления о входящих рейдах в ленте чата',
+          uk: 'Показувати сповіщення про вхідні рейди у стрічці чату',
         },
       },
     },
@@ -171,6 +191,11 @@ const buildConfigFields = (
           ru: 'Минимум рейдеров для оповещения о рейде',
           uk: 'Мінімум рейдерів для сповіщення про рейд',
         },
+        description: {
+          en: 'Raid is shown in chat only if it brings at least this many viewers',
+          ru: 'Рейд показывается в чате только если пришло не меньше указанного числа зрителей',
+          uk: 'Рейд показується в чаті лише якщо прийшло не менше вказаної кількості глядачів',
+        },
       },
     },
     {
@@ -182,6 +207,11 @@ const buildConfigFields = (
           en: 'Show shoutouts in chat',
           ru: 'Отображать shoutout в чате',
           uk: 'Відображати shoutout у чаті',
+        },
+        description: {
+          en: 'Show Twitch shoutout events in the chat feed when a channel is shouted out',
+          ru: 'Показывать в ленте чата события Twitch shoutout, когда каналу делают shoutout',
+          uk: 'Показувати у стрічці чату події Twitch shoutout, коли каналу роблять shoutout',
         },
       },
     },
@@ -195,6 +225,11 @@ const buildConfigFields = (
           ru: 'Отображать watch streak в чате',
           uk: 'Відображати watch streak у чаті',
         },
+        description: {
+          en: 'Show when a viewer reaches a watch streak milestone in the chat feed',
+          ru: 'Показывать в ленте чата, когда зритель достигает вехи watch streak',
+          uk: 'Показувати у стрічці чату, коли глядач досягає віхи watch streak',
+        },
       },
     },
     {
@@ -206,6 +241,11 @@ const buildConfigFields = (
           en: 'Minimum watch streak for notification',
           ru: 'Минимальный streak для оповещения',
           uk: 'Мінімальний streak для сповіщення',
+        },
+        description: {
+          en: 'Watch streak is shown only if the streak count is at least this value',
+          ru: 'Watch streak показывается только если длина streak не меньше этого значения',
+          uk: 'Watch streak показується лише якщо довжина streak не менша за це значення',
         },
       },
     },
@@ -219,6 +259,11 @@ const buildConfigFields = (
           ru: 'Отображать применение наград в чате',
           uk: 'Відображати застосування нагород у чаті',
         },
+        description: {
+          en: 'Show channel point reward redemptions in the chat feed',
+          ru: 'Показывать в ленте чата активации наград за баллы канала',
+          uk: 'Показувати у стрічці чату активації нагород за бали каналу',
+        },
       },
     },
     {
@@ -231,6 +276,11 @@ const buildConfigFields = (
           ru: 'Отображать первые сообщения зрителей в чате',
           uk: 'Відображати перші повідомлення глядачів у чаті',
         },
+        description: {
+          en: "Highlight a viewer's first chat message on the channel",
+          ru: 'Выделять первое сообщение зрителя в чате канала',
+          uk: 'Виділяти перше повідомлення глядача в чаті каналу',
+        },
       },
     },
     {
@@ -242,6 +292,11 @@ const buildConfigFields = (
           en: 'Show subscriptions in chat',
           ru: 'Отображать подписки в чате',
           uk: 'Відображати підписки в чаті',
+        },
+        description: {
+          en: 'Show new subscriptions, resubs, and gift subs in the chat feed',
+          ru: 'Показывать в ленте чата новые подписки, продления и подарочные подписки',
+          uk: 'Показувати у стрічці чату нові підписки, продовження та подарункові підписки',
         },
       },
     },
