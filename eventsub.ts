@@ -1,3 +1,11 @@
+import {
+  buildPollAddonEvent,
+  buildPredictionAddonEvent,
+  emitPollEvent,
+  emitPredictionEvent,
+  PollAddonEventName,
+  PredictionAddonEventName,
+} from './addon-events';
 import { TwitchApi, TwitchBroadcaster } from './api';
 import {
   handleChatNotificationEvent,
@@ -29,6 +37,21 @@ import { buildModerationFeedEvent, buildPollFeedEvent } from './moderation';
 import { getSettings, reloadSettings } from './settings';
 import { notifyConnectionStatus } from './status-notify';
 import { onStreamOffline, refreshViewerCount } from './viewer-count';
+
+/** Maps EventSub poll subscription types to addon emit event names. */
+const POLL_EMIT_EVENTS: Record<string, PollAddonEventName> = {
+  'channel.poll.begin': 'pollBegin',
+  'channel.poll.progress': 'pollProgress',
+  'channel.poll.end': 'pollEnd',
+};
+
+/** Maps EventSub prediction subscription types to addon emit event names. */
+const PREDICTION_EMIT_EVENTS: Record<string, PredictionAddonEventName> = {
+  'channel.prediction.begin': 'predictionBegin',
+  'channel.prediction.progress': 'predictionProgress',
+  'channel.prediction.lock': 'predictionLock',
+  'channel.prediction.end': 'predictionEnd',
+};
 
 type EventSubFrame = {
   metadata: {
@@ -450,33 +473,55 @@ export class TwitchEventSubClient {
           .catch(error => console.error(error));
         break;
       case 'channel.poll.begin':
-        void reloadSettings()
-          .then(() => {
-            if (!getSettings().showPolls) {
-              return;
-            }
-            const pollEvent = buildPollFeedEvent(event);
-            if (!pollEvent) {
-              return;
-            }
-            return pushPollBegin(pollEvent);
-          })
-          .catch(error => console.error(error));
-        break;
+      case 'channel.poll.progress':
       case 'channel.poll.end': {
         const pollEvent = buildPollFeedEvent(event);
-        if (!pollEvent || this.endedPollIds.has(pollEvent.id)) {
+        if (
+          subType === 'channel.poll.end' &&
+          (!pollEvent || this.endedPollIds.has(pollEvent.id))
+        ) {
           break;
         }
-        this.endedPollIds.add(pollEvent.id);
-        void reloadSettings()
-          .then(() => {
-            if (!getSettings().showPolls) {
-              return;
-            }
-            return pushPollEnd(pollEvent);
-          })
-          .catch(error => console.error(error));
+        if (subType === 'channel.poll.end' && pollEvent) {
+          this.endedPollIds.add(pollEvent.id);
+        }
+
+        const pollAddonEvent = buildPollAddonEvent(event);
+        const pollEmitName = POLL_EMIT_EVENTS[subType];
+        if (pollAddonEvent && pollEmitName) {
+          void emitPollEvent(pollEmitName, pollAddonEvent);
+        }
+
+        if (subType === 'channel.poll.begin') {
+          void reloadSettings()
+            .then(() => {
+              if (!getSettings().showPolls || !pollEvent) {
+                return;
+              }
+              return pushPollBegin(pollEvent);
+            })
+            .catch(error => console.error(error));
+        } else if (subType === 'channel.poll.end' && pollEvent) {
+          void reloadSettings()
+            .then(() => {
+              if (!getSettings().showPolls) {
+                return;
+              }
+              return pushPollEnd(pollEvent);
+            })
+            .catch(error => console.error(error));
+        }
+        break;
+      }
+      case 'channel.prediction.begin':
+      case 'channel.prediction.progress':
+      case 'channel.prediction.lock':
+      case 'channel.prediction.end': {
+        const predictionAddonEvent = buildPredictionAddonEvent(event);
+        const predictionEmitName = PREDICTION_EMIT_EVENTS[subType];
+        if (predictionAddonEvent && predictionEmitName) {
+          void emitPredictionEvent(predictionEmitName, predictionAddonEvent);
+        }
         break;
       }
       case 'channel.channel_points_custom_reward_redemption.add':

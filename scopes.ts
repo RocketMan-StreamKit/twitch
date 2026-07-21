@@ -21,6 +21,7 @@ export const SCOPES = [
   'moderator:read:moderators',
   'moderator:read:vips',
   'channel:read:polls',
+  'channel:read:predictions',
   'moderator:read:shoutouts',
   'moderator:manage:shoutouts',
   'clips:edit',

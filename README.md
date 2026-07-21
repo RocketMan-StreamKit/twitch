@@ -66,6 +66,32 @@ await addons.request('twitch', 'sendChatMessage', { message: 'Hello!' });
 
 Methods: `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiPatch`, `apiDelete`, `getChannelId`, `sendChatMessage`. If scopes are missing and the user was previously authorized, the Twitch addon opens OAuth in the browser automatically.
 
+**Addon events** (`addons.subscribe('twitch', …)`): the addon emits poll and prediction lifecycle events from Twitch EventSub so other addons can react without polling.
+
+| Event | When | Payload highlights |
+| --- | --- | --- |
+| `pollBegin` | Poll created / started | `id`, `title`, `choices[]`, voting settings, `started_at`, `ends_at` |
+| `pollProgress` | Votes updated | same + per-choice `votes` / `bits_votes` / `channel_points_votes` |
+| `pollEnd` | Poll ended | same + `status`, `ended_at` |
+| `predictionBegin` | Prediction created / started | `id`, `title`, `outcomes[]`, `started_at`, `locks_at` |
+| `predictionProgress` | Bets updated | same + `users`, `channel_points`, `top_predictors` |
+| `predictionLock` | Betting locked | same + `locked_at` |
+| `predictionEnd` | Prediction resolved / canceled | same + `status`, `winning_outcome_id`, `ended_at` |
+
+```ts
+const sub = await addons.subscribe('twitch', 'pollBegin', ({ data }) => {
+  console.log('Poll started:', data.title, data.choices);
+});
+
+await addons.subscribe('twitch', 'predictionEnd', ({ data }) => {
+  console.log('Prediction ended:', data.title, data.winning_outcome_id, data.status);
+});
+
+// later: sub.Destroy();
+```
+
+Requires Twitch scopes `channel:read:polls` and `channel:read:predictions` (already requested by this addon). Events are emitted even when chat-feed poll notifications are disabled in settings.
+
 ## Русский
 
 ### Для пользователей
@@ -109,6 +135,44 @@ npm run build
 | Тип | `platform.streaming` |
 | Права | NETWORK_REQUEST, NETWORK_WEBSOCKET, WEB_END_POINTS, DASHBOARD_EVENTS, DASHBOARD_EVENTS_INCOMING, DASHBOARD_CHAT, STATUS, NOTIFY, TTS |
 
+**API для других аддонов** (`depends_on: ["twitch"]` рекомендуется):
+
+```ts
+const { grantedScopes, requiredScopes } = await addons.request('twitch', 'getScopes');
+await addons.request('twitch', 'addScopes', { scopes: ['clips:edit'] });
+const clips = await addons.request('twitch', 'apiGet', {
+  url: 'https://api.twitch.tv/helix/clips?broadcaster_id=123',
+  scopes: ['clips:edit'],
+});
+await addons.request('twitch', 'sendChatMessage', { message: 'Привет!' });
+```
+
+Методы: `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiPatch`, `apiDelete`, `getChannelId`, `sendChatMessage`.
+
+**События аддона** (`addons.subscribe('twitch', …)`): жизненный цикл опросов и ставок (predictions) из Twitch EventSub.
+
+| Событие | Когда | Основные поля |
+| --- | --- | --- |
+| `pollBegin` | Опрос создан / начат | `id`, `title`, `choices[]`, настройки голосования, `started_at`, `ends_at` |
+| `pollProgress` | Обновление голосов | то же + `votes` / `bits_votes` / `channel_points_votes` у вариантов |
+| `pollEnd` | Опрос завершён | то же + `status`, `ended_at` |
+| `predictionBegin` | Ставка создана / начата | `id`, `title`, `outcomes[]`, `started_at`, `locks_at` |
+| `predictionProgress` | Обновление ставок | то же + `users`, `channel_points`, `top_predictors` |
+| `predictionLock` | Приём ставок закрыт | то же + `locked_at` |
+| `predictionEnd` | Ставка разрешена / отменена | то же + `status`, `winning_outcome_id`, `ended_at` |
+
+```ts
+await addons.subscribe('twitch', 'pollBegin', ({ data }) => {
+  console.log('Опрос начат:', data.title, data.choices);
+});
+
+await addons.subscribe('twitch', 'predictionEnd', ({ data }) => {
+  console.log('Ставка завершена:', data.title, data.winning_outcome_id, data.status);
+});
+```
+
+Нужны scope `channel:read:polls` и `channel:read:predictions` (уже запрашиваются этим аддоном). События уходят подписчикам даже если показ опросов в ленте чата выключен.
+
 ## Українська
 
 ### Для користувачів
@@ -127,28 +191,48 @@ npm run build
 
 **Встановлення:** Налаштування → Аддони → Встановити з папки (або перетягніть папку/zip у вікно програми).
 
-### Для розробників
-
-Аддон — **TypeScript worker**. Вхідна точка: `index.ts` (збирається в `index.js`).
-
-**Локальна збірка**
-
-```bash
-npm install
-npm run build
-```
-
-Встановіть вміст `dist/` (або zip з релізу) через налаштування StreamKit+.
-
-**Залежності**
-
-- [`@rocketman-streamkit/types`](https://www.npmjs.com/package/@rocketman-streamkit/types) — типи sandbox API
-- [Документація для розробників](https://github.com/RocketMan-StreamKit/types)
-
 **Маніфест**
 
 | Поле | Значення |
 | --- | --- |
 | Тип | `platform.streaming` |
 | Права | NETWORK_REQUEST, NETWORK_WEBSOCKET, WEB_END_POINTS, DASHBOARD_EVENTS, DASHBOARD_EVENTS_INCOMING, DASHBOARD_CHAT, STATUS, NOTIFY, TTS |
+
+**API для інших аддонів** (`depends_on: ["twitch"]` рекомендовано):
+
+```ts
+const { grantedScopes, requiredScopes } = await addons.request('twitch', 'getScopes');
+await addons.request('twitch', 'addScopes', { scopes: ['clips:edit'] });
+const clips = await addons.request('twitch', 'apiGet', {
+  url: 'https://api.twitch.tv/helix/clips?broadcaster_id=123',
+  scopes: ['clips:edit'],
+});
+await addons.request('twitch', 'sendChatMessage', { message: 'Привіт!' });
+```
+
+Методи: `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiPatch`, `apiDelete`, `getChannelId`, `sendChatMessage`.
+
+**Події аддона** (`addons.subscribe('twitch', …)`): життєвий цикл опитувань і ставок (predictions) з Twitch EventSub.
+
+| Подія | Коли | Основні поля |
+| --- | --- | --- |
+| `pollBegin` | Опитування створено / почато | `id`, `title`, `choices[]`, налаштування голосування, `started_at`, `ends_at` |
+| `pollProgress` | Оновлення голосів | те саме + `votes` / `bits_votes` / `channel_points_votes` у варіантів |
+| `pollEnd` | Опитування завершено | те саме + `status`, `ended_at` |
+| `predictionBegin` | Ставку створено / почато | `id`, `title`, `outcomes[]`, `started_at`, `locks_at` |
+| `predictionProgress` | Оновлення ставок | те саме + `users`, `channel_points`, `top_predictors` |
+| `predictionLock` | Прийом ставок закрито | те саме + `locked_at` |
+| `predictionEnd` | Ставку вирішено / скасовано | те саме + `status`, `winning_outcome_id`, `ended_at` |
+
+```ts
+await addons.subscribe('twitch', 'pollBegin', ({ data }) => {
+  console.log('Опитування почато:', data.title, data.choices);
+});
+
+await addons.subscribe('twitch', 'predictionEnd', ({ data }) => {
+  console.log('Ставку завершено:', data.title, data.winning_outcome_id, data.status);
+});
+```
+
+Потрібні scope `channel:read:polls` і `channel:read:predictions` (вже запитуються цим аддоном). Події надсилаються підписникам навіть якщо показ опитувань у стрічці чату вимкнено.
 

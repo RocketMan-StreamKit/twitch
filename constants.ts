@@ -92,7 +92,42 @@ export const EVENTSUB_TYPES = [
     }),
   },
   {
+    type: 'channel.poll.progress',
+    version: '1',
+    condition: (broadcasterId: string) => ({
+      broadcaster_user_id: broadcasterId,
+    }),
+  },
+  {
     type: 'channel.poll.end',
+    version: '1',
+    condition: (broadcasterId: string) => ({
+      broadcaster_user_id: broadcasterId,
+    }),
+  },
+  {
+    type: 'channel.prediction.begin',
+    version: '1',
+    condition: (broadcasterId: string) => ({
+      broadcaster_user_id: broadcasterId,
+    }),
+  },
+  {
+    type: 'channel.prediction.progress',
+    version: '1',
+    condition: (broadcasterId: string) => ({
+      broadcaster_user_id: broadcasterId,
+    }),
+  },
+  {
+    type: 'channel.prediction.lock',
+    version: '1',
+    condition: (broadcasterId: string) => ({
+      broadcaster_user_id: broadcasterId,
+    }),
+  },
+  {
+    type: 'channel.prediction.end',
     version: '1',
     condition: (broadcasterId: string) => ({
       broadcaster_user_id: broadcasterId,
