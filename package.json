@@ -1,6 +1,6 @@
 {
   "name": "@rocketman-streamkit/addon-twitch",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "private": true,
   "description": "StreamKit+ integration addon: twitch",
   "scripts": {
