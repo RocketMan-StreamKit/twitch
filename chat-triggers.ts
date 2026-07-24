@@ -187,8 +187,4 @@ export const dispatchChatMessageTriggers = async (
   );
 };
 
-events.On('triggers:applied-changed', () => {
-  void refreshChatTriggerRules().catch(error => console.error(error));
-});
-
 void refreshChatTriggerRules().catch(error => console.error(error));
