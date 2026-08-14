@@ -714,6 +714,11 @@ const buildConfigFields = (
       default: 0,
     },
     {
+      key: 'last_pinned_message_id',
+      type: 'text',
+      default: '',
+    },
+    {
       key: 'addon_requested_scopes',
       type: 'object',
       default: {},
