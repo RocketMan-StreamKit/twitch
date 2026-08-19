@@ -382,9 +382,9 @@ const buildConfigFields = (
           uk: 'Коли нагорода більше не потрібна',
         },
         description: {
-          en: 'Applies when you remove a trigger, disable a sound/hotkey, or close StreamKit / disable this addon. While StreamKit is connected, rewards used by active triggers are always forced enabled and unpaused (even if changed manually on Twitch).',
-          ru: 'Срабатывает при удалении триггера, выключении звука/хоткея или закрытии StreamKit / отключении аддона. Пока StreamKit подключён, награды активных триггеров всегда принудительно включаются и снимаются с паузы (даже если их меняли вручную на Twitch).',
-          uk: 'Спрацьовує при видаленні тригера, вимкненні звуку/хоткея або закритті StreamKit / вимкненні аддона. Поки StreamKit підключений, нагороди активних тригерів завжди примусово вмикаються і знімаються з паузи (навіть якщо їх змінювали вручну на Twitch).',
+          en: 'Applies when you remove a trigger, disable an overlay, sound, hotkey, or game integration, or close StreamKit / disable this addon. While StreamKit is connected, rewards used by active triggers are always forced enabled and unpaused (even if changed manually on Twitch).',
+          ru: 'Срабатывает при удалении триггера, выключении оверлея, звука, хоткея или игровой интеграции, либо при закрытии StreamKit / отключении аддона. Пока StreamKit подключён, награды активных триггеров всегда принудительно включаются и снимаются с паузы (даже если их меняли вручную на Twitch).',
+          uk: 'Спрацьовує при видаленні тригера, вимкненні оверлею, звуку, хоткея або ігрової інтеграції, або при закритті StreamKit / вимкненні аддона. Поки StreamKit підключений, нагороди активних тригерів завжди примусово вмикаються і знімаються з паузи (навіть якщо їх змінювали вручну на Twitch).',
         },
       },
     },
@@ -551,31 +551,30 @@ const buildConfigFields = (
         uk: 'Налаштування чату',
       },
       description: {
-        en: 'Chat event display, TTS, and channel point rewards',
-        ru: 'Отображение событий чата, TTS и награды за баллы канала',
-        uk: 'Відображення подій чату, TTS і нагороди за бали каналу',
+        en: 'Chat event display and highlighted-message TTS',
+        ru: 'Отображение событий чата и TTS выделенных сообщений',
+        uk: 'Відображення подій чату та TTS виділених повідомлень',
       },
     },
-    items: [
-      ...chatEventFields,
-      {
-        key: 'channel_point_rewards',
-        type: 'spoiler',
-        editor: {
-          label: {
-            en: 'Channel point rewards',
-            ru: 'Награды за баллы канала',
-            uk: 'Нагороди за бали каналу',
-          },
-          description: {
-            en: 'Lifecycle policy and options applied when generating rewards',
-            ru: 'Политика жизненного цикла и опции при генерации наград',
-            uk: 'Політика життєвого циклу та опції під час генерації нагород',
-          },
-        },
-        items: rewardFields,
+    items: [...chatEventFields],
+  };
+
+  const rewardSettings: AddonConfigField = {
+    key: 'channel_point_rewards',
+    type: 'spoiler',
+    editor: {
+      label: {
+        en: 'Channel point rewards',
+        ru: 'Награды за баллы канала',
+        uk: 'Нагороди за бали каналу',
       },
-    ],
+      description: {
+        en: 'Lifecycle policy and options applied when generating rewards',
+        ru: 'Политика жизненного цикла и опции при генерации наград',
+        uk: 'Політика життєвого циклу та опції під час генерації нагород',
+      },
+    },
+    items: rewardFields,
   };
 
   const automationSettingsPage: AddonConfigField = {
@@ -753,6 +752,7 @@ const buildConfigFields = (
       items: botAccountFields,
     },
     access_token ? chatSettingsPage : withoutEditor(chatSettingsPage),
+    access_token ? rewardSettings : withoutEditor(rewardSettings),
     access_token
       ? automationSettingsPage
       : withoutEditor(automationSettingsPage),
