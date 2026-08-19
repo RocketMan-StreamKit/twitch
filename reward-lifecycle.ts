@@ -1,122 +1,29 @@
 import { TwitchApi } from './api';
-import { getSettings, reloadSettings } from './settings';
+import {
+  collectActiveRewardIds,
+  collectManagedRewardBindingsFromCategories,
+  collectManagedRewardBindingsFromSnapshot,
+  collectManagedRewardIds,
+  type ManagedRewardBinding,
+} from './reward-bindings';
+import { readRewardMetaMap } from './reward-meta';
+import { reloadSettings, type RewardLifecycleAction } from './settings';
 
-const REDEEMS_KEY = 'redeems';
-
-type TriggerRuleLike = {
-  type?: string;
-  key?: string;
-  value?: string | number | boolean;
+/** One automatically managed reward shown in addon settings. */
+export type ManagedRewardListItem = {
+  /** Twitch custom reward id. */
+  id: string;
+  /** Display title (Twitch title, stored meta, or a consumer name). */
+  title: string;
+  /** Channel points cost when known. */
+  cost: number | null;
+  /** True when at least one bound consumer is currently enabled. */
+  active: boolean;
 };
 
-type RedeemSourceRule = {
-  trigger: TriggerRuleLike;
-  /** When false, the consumer is disabled and the reward should be unavailable. */
-  enabled?: boolean;
-};
-
-type TriggersAppliedSnapshotLike = {
-  overlay?: RedeemSourceRule[];
-  timer?: RedeemSourceRule[];
-  game?: RedeemSourceRule[];
-  sounds?: RedeemSourceRule[];
-  hotkeys?: RedeemSourceRule[];
-};
-
-type TriggersCategoryMapLike = {
-  overlay?: Record<string, RedeemSourceRule[]>;
-  timer?: Record<string, RedeemSourceRule[]>;
-  game?: Record<string, RedeemSourceRule[]>;
-  sounds?: Record<string, RedeemSourceRule[]>;
-  hotkeys?: Record<string, RedeemSourceRule[]>;
-};
-
-/**
- * Returns whether a trigger rule is a channel-point redeem with a reward id.
- * @param trigger Applied trigger rule.
- * @example
- * isRedeemTrigger({ type: 'custom', key: 'redeems', value: 'abc' });
- */
-const isRedeemTrigger = (
-  trigger: TriggerRuleLike | undefined
-): trigger is TriggerRuleLike & { value: string } => {
-  if (!trigger || trigger.type !== 'custom' || trigger.key !== REDEEMS_KEY) {
-    return false;
-  }
-  return typeof trigger.value === 'string' && Boolean(trigger.value.trim());
-};
-
-/**
- * Collects reward ids from rules that are currently active (consumer enabled).
- * @param rules Redeem-capable applied rules.
- * @param into Destination set.
- * @example
- * collectActiveFromRules(snapshot.sounds || [], ids);
- */
-const collectActiveFromRules = (
-  rules: RedeemSourceRule[] | undefined,
-  into: Set<string>
-) => {
-  if (!rules?.length) {
-    return;
-  }
-  for (const rule of rules) {
-    if (rule.enabled === false) {
-      continue;
-    }
-    if (!isRedeemTrigger(rule.trigger)) {
-      continue;
-    }
-    into.add(rule.trigger.value.trim());
-  }
-};
-
-/**
- * Collects active reward ids from a per-addon applied snapshot.
- * @param snapshot `previous` / `current` from `triggers:applied-changed`.
- * @example
- * const ids = collectActiveRewardIdsFromSnapshot(payload.current);
- */
-export const collectActiveRewardIdsFromSnapshot = (
-  snapshot: TriggersAppliedSnapshotLike | undefined
-): Set<string> => {
-  const ids = new Set<string>();
-  if (!snapshot) {
-    return ids;
-  }
-  collectActiveFromRules(snapshot.overlay, ids);
-  collectActiveFromRules(snapshot.timer, ids);
-  collectActiveFromRules(snapshot.game, ids);
-  collectActiveFromRules(snapshot.sounds, ids);
-  collectActiveFromRules(snapshot.hotkeys, ids);
-  return ids;
-};
-
-/**
- * Collects active reward ids from `triggers.getApplied()` categories map.
- * @param categories Map returned by `triggers.getApplied()`.
- * @example
- * const ids = collectActiveRewardIdsFromCategories(categories);
- */
-export const collectActiveRewardIdsFromCategories = (
-  categories: TriggersCategoryMapLike
-): Set<string> => {
-  const ids = new Set<string>();
-  const ingest = (group: Record<string, RedeemSourceRule[]> | undefined) => {
-    if (!group) {
-      return;
-    }
-    for (const rules of Object.values(group)) {
-      collectActiveFromRules(rules, ids);
-    }
-  };
-  ingest(categories.overlay);
-  ingest(categories.timer);
-  ingest(categories.game);
-  ingest(categories.sounds);
-  ingest(categories.hotkeys);
-  return ids;
-};
+type TriggersAppliedSnapshotLike = Parameters<
+  typeof collectManagedRewardBindingsFromSnapshot
+>[0];
 
 /**
  * Forces a reward into the available state on Twitch (enabled + unpaused).
@@ -141,19 +48,23 @@ const ensureRewardAvailable = async (rewardId: string) => {
 /**
  * Applies the configured unavailable policy to one reward id.
  * @param rewardId Twitch custom reward id.
+ * @param policy Optional already-resolved lifecycle action (avoids extra config IPC).
  * @example
  * await applyUnavailablePolicyToReward('reward-id');
+ * await applyUnavailablePolicyToReward('reward-id', 'disable');
  */
 export const applyUnavailablePolicyToReward = async (
-  rewardId: string
+  rewardId: string,
+  policy?: RewardLifecycleAction
 ): Promise<{ success: boolean; message?: string }> => {
-  const settings = await reloadSettings();
   const id = rewardId.trim();
   if (!id) {
     return { success: false, message: 'Invalid reward id' };
   }
 
-  switch (settings.rewardLifecycle) {
+  const action = policy ?? (await reloadSettings()).rewardLifecycle;
+
+  switch (action) {
     case 'none':
       return { success: true };
     case 'pause': {
@@ -191,6 +102,7 @@ export const applyUnavailablePolicyToReward = async (
 
 /**
  * Applies the unavailable policy to many reward ids (sequentially).
+ * Reloads addon settings once, then reuses that policy for every id.
  * @param rewardIds Twitch custom reward ids.
  * @example
  * await applyUnavailablePolicyToRewards(['a', 'b']);
@@ -198,11 +110,15 @@ export const applyUnavailablePolicyToReward = async (
 export const applyUnavailablePolicyToRewards = async (
   rewardIds: Iterable<string>
 ) => {
-  if (getSettings().rewardLifecycle === 'none') {
+  const settings = await reloadSettings();
+  if (settings.rewardLifecycle === 'none') {
     return;
   }
   for (const rewardId of rewardIds) {
-    const result = await applyUnavailablePolicyToReward(rewardId);
+    const result = await applyUnavailablePolicyToReward(
+      rewardId,
+      settings.rewardLifecycle
+    );
     if (!result.success) {
       console.warn(
         'Failed to apply Twitch reward unavailable policy:',
@@ -228,7 +144,9 @@ export const syncOnlineRewards = async () => {
     return;
   }
 
-  const ids = collectActiveRewardIdsFromCategories(applied.categories);
+  const ids = collectActiveRewardIds(
+    collectManagedRewardBindingsFromCategories(applied.categories)
+  );
   for (const rewardId of ids) {
     await ensureRewardAvailable(rewardId);
   }
@@ -250,10 +168,11 @@ export const syncRewardsOnAppliedChanged = async (
     return;
   }
 
-  await reloadSettings();
-
-  const prevIds = collectActiveRewardIdsFromSnapshot(previous);
-  const nextIds = collectActiveRewardIdsFromSnapshot(current);
+  const prevIds = collectActiveRewardIds(
+    collectManagedRewardBindingsFromSnapshot(previous)
+  );
+  const nextBindings = collectManagedRewardBindingsFromSnapshot(current);
+  const nextIds = collectActiveRewardIds(nextBindings);
 
   const unavailable: string[] = [];
   for (const id of prevIds) {
@@ -271,7 +190,10 @@ export const syncRewardsOnAppliedChanged = async (
 };
 
 /**
- * Applies the unavailable policy to all currently active rewards (app/addon stop).
+ * Applies the unavailable policy to every reward this addon still binds.
+ * Includes consumers that are already off — those were skipped previously
+ * when prepare-stop only looked at "currently active" ids, so a failed
+ * overlay-off disable was never retried on quit.
  * @example
  * await syncRewardsOnPrepareStop();
  */
@@ -280,8 +202,8 @@ export const syncRewardsOnPrepareStop = async () => {
     return;
   }
 
-  await reloadSettings();
-  if (getSettings().rewardLifecycle === 'none') {
+  const settings = await reloadSettings();
+  if (settings.rewardLifecycle === 'none') {
     return;
   }
 
@@ -290,6 +212,89 @@ export const syncRewardsOnPrepareStop = async () => {
     return;
   }
 
-  const ids = collectActiveRewardIdsFromCategories(applied.categories);
+  const ids = collectManagedRewardIds(
+    collectManagedRewardBindingsFromCategories(applied.categories)
+  );
   await applyUnavailablePolicyToRewards(ids);
+};
+
+/**
+ * Resolves a display title/cost for a managed reward binding.
+ * @param binding Bound reward from applied triggers.
+ * @param helixById Live Twitch rewards keyed by id.
+ * @param metaMap Stored recreate metadata.
+ * @example
+ * resolveManagedRewardListItem(binding, helix, meta);
+ */
+const resolveManagedRewardListItem = (
+  binding: ManagedRewardBinding,
+  helixById: Map<string, { title: string; cost: number }>,
+  metaMap: ReturnType<typeof readRewardMetaMap>
+): ManagedRewardListItem => {
+  const helix = helixById.get(binding.rewardId);
+  if (helix) {
+    return {
+      id: binding.rewardId,
+      title: helix.title,
+      cost: helix.cost,
+      active: binding.active,
+    };
+  }
+  const stored = metaMap[binding.rewardId];
+  if (stored?.title?.trim()) {
+    return {
+      id: binding.rewardId,
+      title: stored.title.trim(),
+      cost: stored.cost,
+      active: binding.active,
+    };
+  }
+  return {
+    id: binding.rewardId,
+    title: binding.titleHint?.trim() || binding.rewardId,
+    cost: null,
+    active: binding.active,
+  };
+};
+
+/**
+ * Lists channel-point rewards this addon currently manages (settings info block).
+ * @example
+ * const items = await listManagedRewardsForSettings();
+ */
+export const listManagedRewardsForSettings = async (): Promise<
+  ManagedRewardListItem[]
+> => {
+  const applied = await triggers.getApplied();
+  if (!applied.success) {
+    return [];
+  }
+
+  const bindings = collectManagedRewardBindingsFromCategories(
+    applied.categories
+  );
+  if (!bindings.length) {
+    return [];
+  }
+
+  const helixById = new Map<string, { title: string; cost: number }>();
+  if (TwitchApi.accessToken) {
+    const listed = await TwitchApi.ListCustomRewards();
+    if (listed.success) {
+      for (const reward of listed.rewards) {
+        helixById.set(reward.id, { title: reward.title, cost: reward.cost });
+      }
+    }
+  }
+
+  const metaMap = readRewardMetaMap();
+  return bindings
+    .map(binding =>
+      resolveManagedRewardListItem(binding, helixById, metaMap)
+    )
+    .sort((left, right) =>
+      left.title.localeCompare(right.title, undefined, {
+        sensitivity: 'base',
+      })
+    );
 };

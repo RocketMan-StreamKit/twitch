@@ -1,4 +1,5 @@
 import { TwitchApi } from './api';
+import { collectManagedRewardBindingsFromCategories } from './reward-bindings';
 import {
   moveRewardMeta,
   readRewardMetaMap,
@@ -8,12 +9,6 @@ import {
 
 const REDEEMS_KEY = 'redeems';
 const DEFAULT_REWARD_COST = 100;
-
-type TriggerRuleLike = {
-  type?: string;
-  key?: string;
-  value?: string | number | boolean;
-};
 
 type RedeemBinding = {
   /** Twitch reward id currently stored in the trigger. */
@@ -27,91 +22,6 @@ type TriggersReplaceApi = {
     replacements: Array<{ from: string; to: string }>;
     key?: string;
   }) => Promise<{ success: true; updated: number } | { success: false; message?: string }>;
-};
-
-/**
- * Returns whether a trigger rule is a channel-point redeem with a reward id.
- * @param trigger Applied trigger rule.
- * @example
- * isRedeemTrigger({ type: 'custom', key: 'redeems', value: 'abc' });
- */
-const isRedeemTrigger = (
-  trigger: TriggerRuleLike | undefined
-): trigger is TriggerRuleLike & { value: string } => {
-  if (!trigger || trigger.type !== 'custom' || trigger.key !== REDEEMS_KEY) {
-    return false;
-  }
-  return typeof trigger.value === 'string' && Boolean(trigger.value.trim());
-};
-
-/**
- * Collects unique redeem reward ids (and title hints) from applied triggers.
- * @param categories Map from `triggers.getApplied().categories`.
- * @example
- * const bindings = collectRedeemBindings(categories);
- */
-const collectRedeemBindings = (categories: {
-  overlay?: Record<string, Array<{ trigger: TriggerRuleLike; targetId?: string }>>;
-  timer?: Record<string, Array<{ trigger: TriggerRuleLike }>>;
-  game?: Record<
-    string,
-    Array<{ trigger: TriggerRuleLike; gameAddonId?: string }>
-  >;
-  sounds?: Record<
-    string,
-    Array<{ trigger: TriggerRuleLike; soundName?: string }>
-  >;
-  hotkeys?: Record<
-    string,
-    Array<{ trigger: TriggerRuleLike; presetName?: string }>
-  >;
-}): RedeemBinding[] => {
-  const byId = new Map<string, RedeemBinding>();
-
-  const add = (trigger: TriggerRuleLike, titleHint?: string) => {
-    if (!isRedeemTrigger(trigger)) {
-      return;
-    }
-    const rewardId = trigger.value.trim();
-    const existing = byId.get(rewardId);
-    if (existing) {
-      if (!existing.titleHint && titleHint) {
-        existing.titleHint = titleHint;
-      }
-      return;
-    }
-    byId.set(rewardId, {
-      rewardId,
-      titleHint: titleHint?.trim() || undefined,
-    });
-  };
-
-  const twitchOverlay = categories.overlay?.twitch || [];
-  for (const rule of twitchOverlay) {
-    add(rule.trigger);
-  }
-
-  const twitchTimer = categories.timer?.twitch || [];
-  for (const rule of twitchTimer) {
-    add(rule.trigger, 'Timer');
-  }
-
-  const twitchGame = categories.game?.twitch || [];
-  for (const rule of twitchGame) {
-    add(rule.trigger);
-  }
-
-  const twitchSounds = categories.sounds?.twitch || [];
-  for (const rule of twitchSounds) {
-    add(rule.trigger, rule.soundName);
-  }
-
-  const twitchHotkeys = categories.hotkeys?.twitch || [];
-  for (const rule of twitchHotkeys) {
-    add(rule.trigger, rule.presetName);
-  }
-
-  return [...byId.values()];
 };
 
 /**
@@ -208,7 +118,9 @@ export const syncMissingChannelPointRewards = async (): Promise<
     listed.rewards.map(item => [item.title, item] as const)
   );
   const metaMap = readRewardMetaMap();
-  const bindings = collectRedeemBindings(applied.categories);
+  const bindings = collectManagedRewardBindingsFromCategories(
+    applied.categories
+  );
   const replacements: Array<{ from: string; to: string }> = [];
 
   for (const binding of bindings) {

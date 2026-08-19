@@ -59,6 +59,8 @@ export type TwitchChatter = {
 export const TwitchApi = new (class {
   accessToken: string | null = null;
   botAccessToken: string | null = null;
+  /** Helix `/users` result keyed by the OAuth token that fetched it. */
+  private meByToken = new Map<string, TwitchBroadcaster>();
 
   /**
    * Builds Helix request headers for the given OAuth access token.
@@ -253,10 +255,36 @@ export const TwitchApi = new (class {
     }
   }
 
+  /**
+   * Waits for a short delay between Helix retries.
+   * @param ms Delay in milliseconds.
+   * @example
+   * await this.sleep(400);
+   */
+  private sleep(ms: number) {
+    return new Promise<void>(resolve => {
+      setTimeout(resolve, ms);
+    });
+  }
+
+  /**
+   * Returns whether a Helix error should be retried (rate limit or server error).
+   * @param status HTTP status from the Helix JSON body, when present.
+   * @example
+   * this.isRetryableHelixStatus(429);
+   */
+  private isRetryableHelixStatus(status: number | undefined) {
+    return (
+      status === 429 || status === 500 || status === 502 || status === 503
+    );
+  }
+
   private parseHelixBody<T extends Record<string, unknown>>(
     response: string,
     fallbackMessage: string
-  ): { ok: true; body: T } | { ok: false; message: string } {
+  ):
+    | { ok: true; body: T }
+    | { ok: false; message: string; status?: number } {
     if (!response?.trim()) {
       return { ok: false, message: fallbackMessage };
     }
@@ -279,6 +307,7 @@ export const TwitchApi = new (class {
     ) {
       return {
         ok: false,
+        status: errorBody.status,
         message: errorBody.message || errorBody.error || fallbackMessage,
       };
     }
@@ -331,12 +360,20 @@ export const TwitchApi = new (class {
 
   /**
    * Resolves the Twitch user for the given OAuth token.
+   * Cached per token so reward pause/disable batches do not spam Helix `/users`.
    * @param accessToken OAuth access token; defaults to the main account token.
+   * @example
+   * const me = await TwitchApi.GetMe();
    */
   async GetMe(accessToken?: string | null): Promise<TwitchBroadcaster | null> {
     const token = accessToken ?? this.accessToken;
     if (!token) {
       return null;
+    }
+
+    const cached = this.meByToken.get(token);
+    if (cached) {
+      return cached;
     }
 
     try {
@@ -359,11 +396,13 @@ export const TwitchApi = new (class {
       if (!user) {
         return null;
       }
-      return {
+      const broadcaster: TwitchBroadcaster = {
         id: user.id,
         login: user.login,
         display_name: user.display_name,
       };
+      this.meByToken.set(token, broadcaster);
+      return broadcaster;
     } catch (error) {
       console.error('Failed to resolve Twitch user:', error);
       return null;
@@ -781,38 +820,56 @@ export const TwitchApi = new (class {
       id: trimmedRewardId,
     });
 
-    try {
-      const response = await (
-        network.request as typeof network.request & {
-          patch: typeof network.request.put;
+    const maxAttempts = 4;
+    let lastMessage = 'Failed to update Twitch reward';
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      try {
+        const response = await (
+          network.request as typeof network.request & {
+            patch: typeof network.request.put;
+          }
+        ).patch(
+          `https://api.twitch.tv/helix/channel_points/custom_rewards?${query}`,
+          body,
+          this.authHeaders()
+        );
+        const parsed = this.parseHelixBody<{ data?: TwitchCustomReward[] }>(
+          response,
+          'Failed to update Twitch reward'
+        );
+        if (!parsed.ok) {
+          lastMessage = parsed.message;
+          if (
+            attempt < maxAttempts - 1 &&
+            this.isRetryableHelixStatus(parsed.status)
+          ) {
+            await this.sleep(400 * (attempt + 1));
+            continue;
+          }
+          return { success: false, message: parsed.message };
         }
-      ).patch(
-        `https://api.twitch.tv/helix/channel_points/custom_rewards?${query}`,
-        body,
-        this.authHeaders()
-      );
-      const parsed = this.parseHelixBody<{ data?: TwitchCustomReward[] }>(
-        response,
-        'Failed to update Twitch reward'
-      );
-      if (!parsed.ok) {
-        return { success: false, message: parsed.message };
-      }
 
-      const reward = parsed.body.data?.[0];
-      if (!reward?.id) {
-        return { success: false, message: 'Twitch did not return reward id' };
-      }
+        const reward = parsed.body.data?.[0];
+        if (!reward?.id) {
+          return { success: false, message: 'Twitch did not return reward id' };
+        }
 
-      return { success: true, reward };
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Failed to update Twitch reward';
-      console.error('Failed to update Twitch custom reward:', message);
-      return { success: false, message };
+        return { success: true, reward };
+      } catch (error) {
+        lastMessage =
+          error instanceof Error
+            ? error.message
+            : 'Failed to update Twitch reward';
+        if (attempt < maxAttempts - 1) {
+          await this.sleep(400 * (attempt + 1));
+          continue;
+        }
+        console.error('Failed to update Twitch custom reward:', lastMessage);
+        return { success: false, message: lastMessage };
+      }
     }
+
+    return { success: false, message: lastMessage };
   }
 
   /**
@@ -971,18 +1028,44 @@ export const TwitchApi = new (class {
       return false;
     }
 
-    try {
-      await network.request.delete(
-        `https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${encodeURIComponent(
-          broadcaster.id
-        )}&id=${encodeURIComponent(rewardId)}`,
-        this.authHeaders()
-      );
-      return true;
-    } catch (error) {
-      console.error('Failed to delete Twitch custom reward:', error);
-      return false;
+    const maxAttempts = 4;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      try {
+        const response = await network.request.delete(
+          `https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=${encodeURIComponent(
+            broadcaster.id
+          )}&id=${encodeURIComponent(rewardId)}`,
+          this.authHeaders()
+        );
+        if (response?.trim()) {
+          const parsed = this.parseHelixBody<Record<string, unknown>>(
+            response,
+            'Failed to delete Twitch reward'
+          );
+          if (!parsed.ok) {
+            if (
+              attempt < maxAttempts - 1 &&
+              this.isRetryableHelixStatus(parsed.status)
+            ) {
+              await this.sleep(400 * (attempt + 1));
+              continue;
+            }
+            console.error('Failed to delete Twitch custom reward:', parsed.message);
+            return false;
+          }
+        }
+        return true;
+      } catch (error) {
+        if (attempt < maxAttempts - 1) {
+          await this.sleep(400 * (attempt + 1));
+          continue;
+        }
+        console.error('Failed to delete Twitch custom reward:', error);
+        return false;
+      }
     }
+
+    return false;
   }
 
   /**

@@ -11,6 +11,10 @@ import {
   setHadAuthorization,
 } from './scopes';
 import { startTwitchTracking, stopTwitchTracking } from './tracking';
+import {
+  listManagedRewardsForSettings,
+  type ManagedRewardListItem,
+} from './reward-lifecycle';
 
 const clearTwitchAuth = () => {
   stopTwitchTracking();
@@ -100,17 +104,58 @@ const authUrlField = (
 });
 
 /**
+ * Formats one managed reward line for the settings info block.
+ * @param item Reward shown in the automatically-managed list.
+ * @example
+ * formatManagedRewardLine({ id: 'a', title: 'Hydrate', cost: 100, active: true });
+ */
+const formatManagedRewardLine = (item: ManagedRewardListItem) => {
+  const cost =
+    typeof item.cost === 'number' && Number.isFinite(item.cost)
+      ? ` (${item.cost})`
+      : '';
+  return `• ${item.title}${cost}`;
+};
+
+/**
+ * Builds the info-block body listing rewards this addon currently manages.
+ * @param items Sorted managed rewards (empty when none are bound).
+ * @example
+ * formatManagedRewardsDescription([]);
+ */
+const formatManagedRewardsDescription = (
+  items: ManagedRewardListItem[]
+): AddonLocalizedString => {
+  if (!items.length) {
+    return {
+      en: 'None yet. Bind a reward in an overlay, sound, hotkey, timer, or game trigger.',
+      ru: 'Пока пусто. Привяжите награду в триггере оверлея, звука, хоткея, таймера или игры.',
+      uk: 'Поки порожньо. Прив’яжіть нагороду в тригері оверлею, звуку, хоткея, таймера або гри.',
+    };
+  }
+
+  const list = items.map(formatManagedRewardLine).join('\n');
+  return {
+    en: `Channel point rewards currently bound to StreamKit triggers. They stay available while a trigger is active; the policy above runs when they are no longer needed.\n\n${list}`,
+    ru: `Награды за баллы канала, привязанные к триггерам StreamKit. Пока триггер активен, они доступны; когда награда больше не нужна, применяется политика выше.\n\n${list}`,
+    uk: `Нагороди за бали каналу, прив’язані до тригерів StreamKit. Поки тригер активний, вони доступні; коли нагорода більше не потрібна, застосовується політика вище.\n\n${list}`,
+  };
+};
+
+/**
  * Builds addon settings schema fields for the current auth state.
  * @param access_token Stored main OAuth access token, if any.
  * @param login Authorized main Twitch login shown on the logout button.
  * @param bot_access_token Stored bot OAuth access token, if any.
  * @param botLogin Authorized bot Twitch login shown on the bot logout button.
+ * @param managedRewards Channel-point rewards currently bound as triggers.
  */
 const buildConfigFields = (
   access_token: string,
   login?: string,
   bot_access_token?: string,
-  botLogin?: string
+  botLogin?: string,
+  managedRewards: ManagedRewardListItem[] = []
 ): AddonConfigSchema => {
   const chatEventFields: AddonConfigSchema = [
     {
@@ -386,6 +431,19 @@ const buildConfigFields = (
           ru: 'Срабатывает при удалении триггера, выключении оверлея, звука, хоткея или игровой интеграции, либо при закрытии StreamKit / отключении аддона. Пока StreamKit подключён, награды активных триггеров всегда принудительно включаются и снимаются с паузы (даже если их меняли вручную на Twitch).',
           uk: 'Спрацьовує при видаленні тригера, вимкненні оверлею, звуку, хоткея або ігрової інтеграції, або при закритті StreamKit / вимкненні аддона. Поки StreamKit підключений, нагороди активних тригерів завжди примусово вмикаються і знімаються з паузи (навіть якщо їх змінювали вручну на Twitch).',
         },
+      },
+    },
+    {
+      key: 'managed_rewards_info',
+      type: 'info',
+      editor: {
+        label: {
+          en: 'Automatically managed rewards',
+          ru: 'Награды под автоматическим управлением',
+          uk: 'Нагороди під автоматичним керуванням',
+        },
+        description: formatManagedRewardsDescription(managedRewards),
+        infoBorder: 'blue',
       },
     },
     {
@@ -759,6 +817,67 @@ const buildConfigFields = (
   ];
 };
 
+/** Last auth fields used to rebuild settings without repeating OAuth validation. */
+let lastConfigAuth: {
+  access_token: string;
+  login?: string;
+  bot_access_token: string;
+  botLogin?: string;
+} | null = null;
+
+/**
+ * Pushes the settings schema, including the current managed-rewards list.
+ * @param access_token Main OAuth token (empty when logged out).
+ * @param login Main Twitch login shown on the logout button.
+ * @param bot_access_token Bot OAuth token.
+ * @param botLogin Bot Twitch login shown on the disconnect button.
+ * @example
+ * await applyConfigFields('', undefined, '', undefined);
+ */
+const applyConfigFields = async (
+  access_token: string,
+  login: string | undefined,
+  bot_access_token: string,
+  botLogin: string | undefined
+) => {
+  lastConfigAuth = {
+    access_token,
+    login,
+    bot_access_token,
+    botLogin,
+  };
+  const managedRewards = access_token
+    ? await listManagedRewardsForSettings()
+    : [];
+  GenerateConfig(
+    buildConfigFields(
+      access_token,
+      login,
+      bot_access_token,
+      botLogin,
+      managedRewards
+    )
+  );
+};
+
+/**
+ * Rebuilds the settings schema so the managed-rewards info block stays current.
+ * No-ops until `RegenerateConfig` has produced a schema at least once.
+ * @example
+ * await refreshManagedRewardsConfig();
+ */
+export const refreshManagedRewardsConfig = async () => {
+  if (!lastConfigAuth) {
+    return;
+  }
+  await applyConfigFields(
+    lastConfigAuth.access_token,
+    lastConfigAuth.login,
+    lastConfigAuth.bot_access_token,
+    lastConfigAuth.botLogin
+  );
+};
+
 export const RegenerateConfig = () => {
   void api.config.getParams().then(async params => {
     const access_token = params.access_token;
@@ -819,15 +938,21 @@ export const RegenerateConfig = () => {
       }
 
       startTwitchTracking();
-      GenerateConfig(
-        buildConfigFields(access_token, user.login, activeBotToken, botLogin)
+      await applyConfigFields(
+        access_token,
+        user.login,
+        activeBotToken,
+        botLogin
       );
       return;
     }
 
     stopTwitchTracking();
-    GenerateConfig(
-      buildConfigFields(access_token, undefined, activeBotToken, botLogin)
+    await applyConfigFields(
+      access_token,
+      undefined,
+      activeBotToken,
+      botLogin
     );
   });
 };

@@ -1,4 +1,5 @@
 import { refreshChatTriggerRules } from './chat-triggers';
+import { refreshManagedRewardsConfig } from './config';
 import {
   syncRewardsOnAppliedChanged,
   syncRewardsOnPrepareStop,
@@ -23,12 +24,21 @@ events.On(
     void syncRewardsOnAppliedChanged(
       payload?.previous || {},
       payload?.current || {}
-    ).catch(error => {
-      console.error(
-        'Failed to sync Twitch rewards after trigger change:',
-        error
-      );
-    });
+    )
+      .catch(error => {
+        console.error(
+          'Failed to sync Twitch rewards after trigger change:',
+          error
+        );
+      })
+      .finally(() => {
+        void refreshManagedRewardsConfig().catch(error => {
+          console.error(
+            'Failed to refresh managed Twitch rewards list:',
+            error
+          );
+        });
+      });
 
     return { success: true };
   }
