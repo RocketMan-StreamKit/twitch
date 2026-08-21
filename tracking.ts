@@ -1,5 +1,6 @@
 import { TwitchApi } from './api';
 import { handleAutoClipRecord, resetAutoClipState } from './auto-clip';
+import { resetAutoFollowModeState } from './auto-follow-mode';
 import { resetAutoShoutoutState } from './auto-shoutout';
 import {
   resolveDashboardChatSender,
@@ -127,6 +128,7 @@ export const stopTwitchTracking = (options?: { notify?: boolean }) => {
   void dashboard.offRecord();
   resetAutoClipState();
   resetAutoShoutoutState();
+  resetAutoFollowModeState();
   stopChatMonitor();
   eventSub?.stop();
   eventSub = null;

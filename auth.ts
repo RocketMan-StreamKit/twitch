@@ -1,3 +1,4 @@
+import { restoreFollowModeIfLifted } from './auto-follow-mode';
 import { RegenerateConfig } from './config';
 import { patchParams } from './params';
 import {
@@ -26,6 +27,7 @@ events.On('twitchBotLogin', () => {
 });
 
 events.On('twitchLogout', async () => {
+  await restoreFollowModeIfLifted();
   stopTwitchTracking();
   await patchParams({ access_token: '' });
   RegenerateConfig();

@@ -15,6 +15,7 @@ export const SCOPES = [
   'moderator:read:chatters',
   'moderator:read:banned_users',
   'moderator:read:chat_settings',
+  'moderator:manage:chat_settings',
   'moderator:read:blocked_terms',
   'moderator:read:unban_requests',
   'moderator:read:warnings',

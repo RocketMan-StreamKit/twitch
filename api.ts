@@ -56,6 +56,17 @@ export type TwitchChatter = {
   user_name: string;
 };
 
+/** Helix chat-settings snapshot used to lift and restore followers-only mode. */
+export type TwitchChatSettings = {
+  /** When true, only followers can send chat messages. */
+  follower_mode: boolean;
+  /**
+   * Minutes a user must have followed before chatting.
+   * `null` when followers-only mode is off; `0` means any current follower.
+   */
+  follower_mode_duration: number | null;
+};
+
 export const TwitchApi = new (class {
   accessToken: string | null = null;
   botAccessToken: string | null = null;
@@ -1257,6 +1268,194 @@ export const TwitchApi = new (class {
       console.error('Failed to send Twitch shoutout:', message);
       return { success: false, message };
     }
+  }
+
+  /**
+   * Reads Helix chat settings for a channel as the given moderator.
+   * @param broadcasterId Channel whose chat settings are requested.
+   * @param moderatorId Token user id (broadcaster or moderator).
+   * @example
+   * const result = await TwitchApi.GetChatSettings('111', '111');
+   * // { success: true, settings: { follower_mode: true, follower_mode_duration: 10 } }
+   */
+  async GetChatSettings(
+    broadcasterId: string,
+    moderatorId: string
+  ): Promise<{
+    success: boolean;
+    settings?: TwitchChatSettings;
+    message?: string;
+  }> {
+    const accessToken = this.accessToken;
+    if (!accessToken) {
+      return { success: false, message: 'Twitch is not authorized' };
+    }
+
+    const channelId = broadcasterId.trim();
+    const modId = moderatorId.trim();
+    if (!channelId || !modId) {
+      return { success: false, message: 'Chat settings ids are required' };
+    }
+
+    const query = new URLSearchParams({
+      broadcaster_id: channelId,
+      moderator_id: modId,
+    });
+
+    try {
+      const response = await network.request.get(
+        `https://api.twitch.tv/helix/chat/settings?${query}`,
+        this.authHeaders()
+      );
+      const parsed = this.parseHelixBody<{
+        data?: Array<{
+          follower_mode?: unknown;
+          follower_mode_duration?: unknown;
+        }>;
+      }>(response, 'Failed to fetch Twitch chat settings');
+      if (!parsed.ok) {
+        return { success: false, message: parsed.message };
+      }
+
+      const row = parsed.body.data?.[0];
+      if (!row) {
+        return { success: false, message: 'Chat settings were not returned' };
+      }
+
+      return {
+        success: true,
+        settings: this.normalizeChatSettings(row),
+      };
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Failed to fetch Twitch chat settings';
+      console.error('Failed to fetch Twitch chat settings:', message);
+      return { success: false, message };
+    }
+  }
+
+  /**
+   * Updates Helix chat settings (followers-only mode) for a channel.
+   * @param broadcasterId Channel whose chat settings are updated.
+   * @param moderatorId Token user id (broadcaster or moderator).
+   * @param patch Fields to send to `PATCH /helix/chat/settings`.
+   * @example
+   * await TwitchApi.UpdateChatSettings('111', '111', { follower_mode: false });
+   */
+  async UpdateChatSettings(
+    broadcasterId: string,
+    moderatorId: string,
+    patch: {
+      follower_mode?: boolean;
+      follower_mode_duration?: number | null;
+    }
+  ): Promise<{
+    success: boolean;
+    settings?: TwitchChatSettings;
+    message?: string;
+  }> {
+    const accessToken = this.accessToken;
+    if (!accessToken) {
+      return { success: false, message: 'Twitch is not authorized' };
+    }
+
+    const channelId = broadcasterId.trim();
+    const modId = moderatorId.trim();
+    if (!channelId || !modId) {
+      return { success: false, message: 'Chat settings ids are required' };
+    }
+
+    const body: {
+      follower_mode?: boolean;
+      follower_mode_duration?: number;
+    } = {};
+    if (typeof patch.follower_mode === 'boolean') {
+      body.follower_mode = patch.follower_mode;
+    }
+    if (
+      typeof patch.follower_mode_duration === 'number' &&
+      Number.isFinite(patch.follower_mode_duration)
+    ) {
+      body.follower_mode_duration = Math.max(
+        0,
+        Math.floor(patch.follower_mode_duration)
+      );
+    } else if (patch.follower_mode_duration === null && patch.follower_mode) {
+      body.follower_mode_duration = 0;
+    }
+    if (
+      body.follower_mode === undefined &&
+      body.follower_mode_duration === undefined
+    ) {
+      return { success: false, message: 'No chat settings fields to update' };
+    }
+
+    const query = new URLSearchParams({
+      broadcaster_id: channelId,
+      moderator_id: modId,
+    });
+
+    try {
+      const response = await (
+        network.request as typeof network.request & {
+          patch: typeof network.request.put;
+        }
+      ).patch(
+        `https://api.twitch.tv/helix/chat/settings?${query}`,
+        body,
+        this.authHeaders()
+      );
+      const trimmed = response?.trim() ?? '';
+      if (!trimmed) {
+        return { success: true };
+      }
+
+      const parsed = this.parseHelixBody<{
+        data?: Array<{
+          follower_mode?: unknown;
+          follower_mode_duration?: unknown;
+        }>;
+      }>(response, 'Failed to update Twitch chat settings');
+      if (!parsed.ok) {
+        return { success: false, message: parsed.message };
+      }
+
+      const row = parsed.body.data?.[0];
+      return {
+        success: true,
+        settings: row ? this.normalizeChatSettings(row) : undefined,
+      };
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Failed to update Twitch chat settings';
+      console.error('Failed to update Twitch chat settings:', message);
+      return { success: false, message };
+    }
+  }
+
+  /**
+   * Maps a Helix chat-settings row to a typed snapshot.
+   * @param row Raw `data[0]` object from GET/PATCH `/helix/chat/settings`.
+   * @example
+   * this.normalizeChatSettings({ follower_mode: true, follower_mode_duration: 0 });
+   */
+  private normalizeChatSettings(row: {
+    follower_mode?: unknown;
+    follower_mode_duration?: unknown;
+  }): TwitchChatSettings {
+    const durationRaw = row.follower_mode_duration;
+    const duration =
+      typeof durationRaw === 'number' && Number.isFinite(durationRaw)
+        ? Math.max(0, Math.floor(durationRaw))
+        : null;
+    return {
+      follower_mode: row.follower_mode === true,
+      follower_mode_duration: duration,
+    };
   }
 
   async clearWebSocketEventSubSubscriptions(): Promise<void> {

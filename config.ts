@@ -1,6 +1,10 @@
 import { TwitchApi } from './api';
 import { patchParams } from './params';
 import {
+  FOLLOW_MODE_NOTIFY_TEXT_PLACEHOLDER,
+  restoreFollowModeIfLifted,
+} from './auto-follow-mode';
+import {
   buildTwitchAuthorizationUrl,
   buildTwitchBotAuthorizationUrl,
   getMissingScopes,
@@ -16,12 +20,17 @@ import {
   type ManagedRewardListItem,
 } from './reward-lifecycle';
 
-const clearTwitchAuth = () => {
+/**
+ * Clears stored Twitch tokens and stops tracking after restoring chat settings.
+ * @example
+ * await clearTwitchAuth();
+ */
+const clearTwitchAuth = async () => {
+  await restoreFollowModeIfLifted();
   stopTwitchTracking();
-  return patchParams({ access_token: '' }).then(() => {
-    TwitchApi.accessToken = null;
-    RegenerateConfig();
-  });
+  await patchParams({ access_token: '' });
+  TwitchApi.accessToken = null;
+  RegenerateConfig();
 };
 
 /**
@@ -599,6 +608,106 @@ const buildConfigFields = (
     },
   ];
 
+  const followModeRaidFields: AddonConfigSchema = [
+    {
+      key: 'auto_lift_follow_mode',
+      type: 'boolean',
+      default: false,
+      editor: {
+        label: {
+          en: 'Disable followers-only mode on raid',
+          ru: 'Снимать режим фолловеров при рейде',
+          uk: 'Знімати режим фоловерів під час рейду',
+        },
+        description: {
+          en: 'If followers-only chat is on when a raid arrives, it is turned off for a while so raiders can write. Requires moderator:manage:chat_settings (re-authorize if you logged in before this feature).',
+          ru: 'Если при входящем рейде включён чат только для фолловеров, он временно снимается, чтобы рейдеры могли писать. Нужен scope moderator:manage:chat_settings (повторно авторизуйтесь, если входили до этой функции).',
+          uk: 'Якщо під час вхідного рейду увімкнено чат лише для фоловерів, його тимчасово знімають, щоб рейдери могли писати. Потрібен scope moderator:manage:chat_settings (повторно авторизуйтесь, якщо входили до цієї функції).',
+        },
+      },
+    },
+    {
+      key: 'auto_lift_follow_mode_min_viewers',
+      type: 'number',
+      default: 10,
+      visibleWhen: { key: 'auto_lift_follow_mode', equals: true },
+      editor: {
+        validation: {
+          min: 1,
+        },
+        label: {
+          en: 'Minimum raiders to lift followers-only mode',
+          ru: 'Минимум рейдеров для снятия режима фолловеров',
+          uk: 'Мінімум рейдерів для зняття режиму фоловерів',
+        },
+        description: {
+          en: 'Followers-only mode is lifted only when the raid brings at least this many viewers',
+          ru: 'Режим фолловеров снимается только если в рейде не меньше указанного числа зрителей',
+          uk: 'Режим фоловерів знімається лише якщо в рейді не менше вказаної кількості глядачів',
+        },
+      },
+    },
+    {
+      key: 'auto_lift_follow_mode_minutes',
+      type: 'number',
+      default: 10,
+      visibleWhen: { key: 'auto_lift_follow_mode', equals: true },
+      editor: {
+        validation: {
+          min: 1,
+          max: 180,
+        },
+        label: {
+          en: 'Minutes to keep followers-only mode off',
+          ru: 'На сколько минут снимать режим фолловеров',
+          uk: 'На скільки хвилин знімати режим фоловерів',
+        },
+        description: {
+          en: 'After this time, followers-only mode is restored with the previous follow duration. Another qualifying raid extends the window. Range: 1–180',
+          ru: 'По истечении этого времени режим фолловеров возвращается с прежней длительностью фоллова. Новый подходящий рейд продлевает окно. Диапазон: 1–180',
+          uk: 'Після цього часу режим фоловерів повертається з попередньою тривалістю фолову. Новий відповідний рейд подовжує вікно. Діапазон: 1–180',
+        },
+      },
+    },
+    {
+      key: 'auto_lift_follow_mode_notify',
+      type: 'boolean',
+      default: true,
+      visibleWhen: { key: 'auto_lift_follow_mode', equals: true },
+      editor: {
+        label: {
+          en: 'Send a chat message when followers-only mode is lifted',
+          ru: 'Отправлять сообщение в чат при снятии режима фолловеров',
+          uk: 'Надсилати повідомлення в чат при знятті режиму фоловерів',
+        },
+        description: {
+          en: 'Uses the bot account when connected, otherwise the main account',
+          ru: 'Отправляется через аккаунт бота, если он подключён, иначе через основной',
+          uk: 'Надсилається через акаунт бота, якщо він підключений, інакше через основний',
+        },
+      },
+    },
+    {
+      key: 'auto_lift_follow_mode_message',
+      type: 'textarea',
+      default: '',
+      visibleWhen: { key: 'auto_lift_follow_mode', equals: true },
+      editor: {
+        label: {
+          en: 'Chat message text',
+          ru: 'Текст сообщения в чат',
+          uk: 'Текст повідомлення в чат',
+        },
+        description: {
+          en: 'Placeholders: {name} — raider display name, {login} — raider username, {count} — viewers in the raid, {minutes} — how long followers-only mode stays off. Leave empty to use the default text for the current app language.',
+          ru: 'Плейсхолдеры: {name} — отображаемое имя рейдера, {login} — логин рейдера, {count} — зрители в рейде, {minutes} — на сколько минут снят режим фолловеров. Пустое поле — текст по умолчанию на языке приложения.',
+          uk: 'Плейсхолдери: {name} — відображуване ім’я рейдера, {login} — логін рейдера, {count} — глядачі в рейді, {minutes} — на скільки хвилин знято режим фоловерів. Порожнє поле — текст за замовчуванням мовою програми.',
+        },
+        placeholder: FOLLOW_MODE_NOTIFY_TEXT_PLACEHOLDER,
+      },
+    },
+  ];
+
   const chatSettingsPage: AddonConfigField = {
     key: 'chat_settings',
     type: 'page',
@@ -645,9 +754,9 @@ const buildConfigFields = (
         uk: 'Автоматизація',
       },
       description: {
-        en: 'Auto clips for overlay triggers and shoutouts for incoming raids',
-        ru: 'Авто-клипы при вызове оверлея и shoutout при входящих рейдах',
-        uk: 'Авто-кліпи при виклику оверлею та shoutout під час вхідних рейдів',
+        en: 'Auto clips, raid shoutouts, and lifting followers-only chat on raids',
+        ru: 'Авто-клипы, shoutout при рейде и снятие режима фолловеров при рейде',
+        uk: 'Авто-кліпи, shoutout під час рейду та зняття режиму фоловерів під час рейду',
       },
     },
     items: [
@@ -684,6 +793,23 @@ const buildConfigFields = (
           },
         },
         items: raidShoutoutFields,
+      },
+      {
+        key: 'auto_raid_follow_mode',
+        type: 'spoiler',
+        editor: {
+          label: {
+            en: 'Followers-only mode on raid',
+            ru: 'Режим фолловеров при рейде',
+            uk: 'Режим фоловерів під час рейду',
+          },
+          description: {
+            en: 'Temporarily disable followers-only chat when someone raids the channel',
+            ru: 'Временно снимать чат только для фолловеров, когда канал рейдят',
+            uk: 'Тимчасово знімати чат лише для фоловерів, коли канал рейдять',
+          },
+        },
+        items: followModeRaidFields,
       },
     ],
   };

@@ -1,3 +1,4 @@
+import { scheduleAutoFollowModeOff } from './auto-follow-mode';
 import { scheduleAutoShoutoutOnRaid } from './auto-shoutout';
 import {
   pushFramedSystemChatNotification,
@@ -96,6 +97,13 @@ export const handleChatNotificationEvent = async (
       void scheduleAutoShoutoutOnRaid({
         broadcasterId: readString(event.broadcaster_user_id),
         raiderUserId: chatterUserId,
+        viewerCount,
+      });
+      void scheduleAutoFollowModeOff({
+        broadcasterId: readString(event.broadcaster_user_id),
+        raiderUserId: chatterUserId,
+        raiderName: chatterName,
+        raiderLogin: chatterLogin,
         viewerCount,
       });
     }

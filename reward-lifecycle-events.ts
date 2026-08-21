@@ -1,3 +1,4 @@
+import { restoreFollowModeIfLifted } from './auto-follow-mode';
 import { refreshChatTriggerRules } from './chat-triggers';
 import { refreshManagedRewardsConfig } from './config';
 import {
@@ -45,6 +46,14 @@ events.On(
 );
 
 events.On('addon:prepare-stop', async () => {
+  try {
+    await restoreFollowModeIfLifted();
+  } catch (error) {
+    console.error(
+      'Failed to restore Twitch followers-only mode on prepare-stop:',
+      error
+    );
+  }
   try {
     await syncRewardsOnPrepareStop();
   } catch (error) {

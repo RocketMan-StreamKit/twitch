@@ -38,6 +38,22 @@ export type TwitchAddonSettings = {
   autoShoutoutMinViewers: number;
   /** Seconds to wait after a raid before sending the auto-shoutout. */
   autoShoutoutDelaySeconds: number;
+  /**
+   * When true, temporarily disables followers-only chat after an incoming raid
+   * that meets the minimum raider count.
+   */
+  autoLiftFollowModeOnRaid: boolean;
+  /** Minimum raid viewer count required before followers-only mode is lifted. */
+  autoLiftFollowModeMinViewers: number;
+  /** Minutes to keep followers-only mode off after a qualifying raid. */
+  autoLiftFollowModeMinutes: number;
+  /** When true, posts a chat message after followers-only mode is lifted. */
+  autoLiftFollowModeNotifyChat: boolean;
+  /**
+   * Chat message template. Placeholders: `{name}`, `{login}`, `{count}`,
+   * `{minutes}`.
+   */
+  autoLiftFollowModeNotifyText: string;
 };
 
 const REWARD_LIFECYCLE_ACTIONS: readonly RewardLifecycleAction[] = [
@@ -70,6 +86,11 @@ const DEFAULTS: TwitchAddonSettings = {
   autoShoutoutOnRaid: false,
   autoShoutoutMinViewers: 10,
   autoShoutoutDelaySeconds: 10,
+  autoLiftFollowModeOnRaid: false,
+  autoLiftFollowModeMinViewers: 10,
+  autoLiftFollowModeMinutes: 10,
+  autoLiftFollowModeNotifyChat: true,
+  autoLiftFollowModeNotifyText: '',
 };
 
 /**
@@ -156,6 +177,32 @@ const readClipDurationSeconds = (value: unknown, fallback: number) => {
   return floored;
 };
 
+/** Maximum minutes followers-only mode can stay lifted after a raid. */
+const MAX_FOLLOW_MODE_MINUTES = 180;
+
+/**
+ * Parses the auto-lift duration in minutes (1–180).
+ * @param value Raw config value.
+ * @param fallback Default when parsing fails.
+ * @example
+ * readFollowModeMinutes(15, 10); // 15
+ * readFollowModeMinutes(0, 10); // 10
+ */
+const readFollowModeMinutes = (value: unknown, fallback: number) => {
+  const parsed = readPositiveInt(value, fallback);
+  return Math.min(MAX_FOLLOW_MODE_MINUTES, parsed);
+};
+
+/**
+ * Reads the optional chat notification template (empty uses a localized default).
+ * @param value Raw config value.
+ * @example
+ * readNotifyText('Raid from {name}'); // 'Raid from {name}'
+ * readNotifyText(undefined); // ''
+ */
+const readNotifyText = (value: unknown) =>
+  typeof value === 'string' ? value : '';
+
 let cached: TwitchAddonSettings = { ...DEFAULTS };
 
 export const reloadSettings = async (): Promise<TwitchAddonSettings> => {
@@ -197,6 +244,19 @@ export const reloadSettings = async (): Promise<TwitchAddonSettings> => {
     autoShoutoutDelaySeconds: readNonNegativeInt(
       params.auto_shoutout_delay_seconds,
       DEFAULTS.autoShoutoutDelaySeconds
+    ),
+    autoLiftFollowModeOnRaid: params.auto_lift_follow_mode === true,
+    autoLiftFollowModeMinViewers: readPositiveInt(
+      params.auto_lift_follow_mode_min_viewers,
+      DEFAULTS.autoLiftFollowModeMinViewers
+    ),
+    autoLiftFollowModeMinutes: readFollowModeMinutes(
+      params.auto_lift_follow_mode_minutes,
+      DEFAULTS.autoLiftFollowModeMinutes
+    ),
+    autoLiftFollowModeNotifyChat: params.auto_lift_follow_mode_notify !== false,
+    autoLiftFollowModeNotifyText: readNotifyText(
+      params.auto_lift_follow_mode_message
     ),
   };
   return cached;
