@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - beta
   workflow_dispatch:
 
 permissions:
@@ -113,6 +114,8 @@ jobs:
           tag_name: v${{ steps.versions.outputs.version }}
           name: v${{ steps.versions.outputs.version }}
           generate_release_notes: false
+          prerelease: ${{ github.ref_name == 'beta' }}
+          make_latest: ${{ github.ref_name != 'beta' }}
           body_path: .github/release-body.md
           files: ${{ steps.files.outputs.list }}
 

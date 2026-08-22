@@ -127,7 +127,7 @@ Keep `manifest.app_version` aligned with the minimum StreamKit+ version that pro
 ## Release
 
 - Bump `version` in `manifest.json`.
-- Push tag `v{version}` or run the **Release addon** GitHub Action (`.github/workflows/release.yml`).
+- Push tag `v{version}` or push `main` for a **latest** GitHub Release; push the `beta` branch for a **pre-release** (catalog beta channel). You can also run the **Release addon** GitHub Action (`.github/workflows/release.yml`).
 - The workflow fails if a GitHub Release for that version already exists, then uploads `main.zip`, `manifest.json`, and the icon.
 
 Details: [Publishing and releases](https://rocketman-streamkit.github.io/types/en/publishing.html)
