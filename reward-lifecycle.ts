@@ -7,7 +7,11 @@ import {
   type ManagedRewardBinding,
 } from './reward-bindings';
 import { readRewardMetaMap } from './reward-meta';
-import { reloadSettings, type RewardLifecycleAction } from './settings';
+import {
+  getSettings,
+  reloadSettings,
+  type RewardLifecycleAction,
+} from './settings';
 
 /** One automatically managed reward shown in addon settings. */
 export type ManagedRewardListItem = {
@@ -27,11 +31,15 @@ type TriggersAppliedSnapshotLike = Parameters<
 
 /**
  * Forces a reward into the available state on Twitch (enabled + unpaused).
+ * No-ops when the "Automatically start rewards" setting is off.
  * @param rewardId Twitch custom reward id.
  * @example
  * await ensureRewardAvailable('reward-id');
  */
 const ensureRewardAvailable = async (rewardId: string) => {
+  if (!getSettings().autoStartRewards) {
+    return;
+  }
   const result = await TwitchApi.UpdateCustomReward(rewardId, {
     is_enabled: true,
     is_paused: false,
@@ -131,11 +139,17 @@ export const applyUnavailablePolicyToRewards = async (
 
 /**
  * Forces every currently active (bound + enabled consumer) reward online.
+ * Skips when automatic reward start is disabled in settings.
  * @example
  * await syncOnlineRewards();
  */
 export const syncOnlineRewards = async () => {
   if (!TwitchApi.accessToken) {
+    return;
+  }
+
+  const settings = await reloadSettings();
+  if (!settings.autoStartRewards) {
     return;
   }
 
@@ -154,7 +168,7 @@ export const syncOnlineRewards = async () => {
 
 /**
  * Reacts to trigger binding changes: make newly inactive rewards unavailable
- * and force newly/still active rewards online.
+ * and, when automatic start is enabled, force newly/still active rewards online.
  * @param previous Previous applied snapshot for this addon.
  * @param current Current applied snapshot for this addon.
  * @example
@@ -182,6 +196,11 @@ export const syncRewardsOnAppliedChanged = async (
   }
   if (unavailable.length) {
     await applyUnavailablePolicyToRewards(unavailable);
+  }
+
+  const settings = await reloadSettings();
+  if (!settings.autoStartRewards) {
+    return;
   }
 
   for (const id of nextIds) {

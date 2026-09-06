@@ -436,9 +436,26 @@ const buildConfigFields = (
           uk: 'Коли нагорода більше не потрібна',
         },
         description: {
-          en: 'Applies when you remove a trigger, disable an overlay, sound, hotkey, or game integration, or close StreamKit / disable this addon. While StreamKit is connected, rewards used by active triggers are always forced enabled and unpaused (even if changed manually on Twitch).',
-          ru: 'Срабатывает при удалении триггера, выключении оверлея, звука, хоткея или игровой интеграции, либо при закрытии StreamKit / отключении аддона. Пока StreamKit подключён, награды активных триггеров всегда принудительно включаются и снимаются с паузы (даже если их меняли вручную на Twitch).',
-          uk: 'Спрацьовує при видаленні тригера, вимкненні оверлею, звуку, хоткея або ігрової інтеграції, або при закритті StreamKit / вимкненні аддона. Поки StreamKit підключений, нагороди активних тригерів завжди примусово вмикаються і знімаються з паузи (навіть якщо їх змінювали вручну на Twitch).',
+          en: 'Applies when you remove a trigger, disable an overlay, sound, hotkey, or game integration, or close StreamKit / disable this addon.',
+          ru: 'Срабатывает при удалении триггера, выключении оверлея, звука, хоткея или игровой интеграции, либо при закрытии StreamKit / отключении аддона.',
+          uk: 'Спрацьовує при видаленні тригера, вимкненні оверлею, звуку, хоткея або ігрової інтеграції, або при закритті StreamKit / вимкненні аддона.',
+        },
+      },
+    },
+    {
+      key: 'auto_start_rewards',
+      type: 'boolean',
+      default: true,
+      editor: {
+        label: {
+          en: 'Automatically start rewards',
+          ru: 'Автоматически запускать награды',
+          uk: 'Автоматично запускати нагороди',
+        },
+        description: {
+          en: 'When rewards used by active triggers are disabled or paused on Twitch, the addon enables them and takes them off pause. Turn this off if you do not want the addon to bring rewards online by itself.',
+          ru: 'Если награды активных триггеров отключены или стоят на паузе на Twitch, аддон сам включает их и снимает с паузы. Выключите, если аддон не должен поднимать награды самостоятельно.',
+          uk: 'Якщо нагороди активних тригерів вимкнені або стоять на паузі на Twitch, аддон сам вмикає їх і знімає з паузи. Вимкніть, якщо аддон не повинен піднімати нагороди самостійно.',
         },
       },
     },

@@ -17,6 +17,11 @@ export type TwitchAddonSettings = {
    * (trigger removed, sound/hotkey disabled, or StreamKit/addon shutting down).
    */
   rewardLifecycle: RewardLifecycleAction;
+  /**
+   * When true, the addon enables and unpauses rewards used by active triggers
+   * if they are disabled or paused on Twitch.
+   */
+  autoStartRewards: boolean;
   addRewardEmoji: boolean;
   /** When true, newly generated rewards get a random Twitch background color. */
   randomRewardColor: boolean;
@@ -75,6 +80,7 @@ const DEFAULTS: TwitchAddonSettings = {
   showRewardRedemption: true,
   speakHighlightedMessages: false,
   rewardLifecycle: 'none',
+  autoStartRewards: true,
   addRewardEmoji: true,
   randomRewardColor: false,
   showFirstUserMessage: true,
@@ -225,6 +231,7 @@ export const reloadSettings = async (): Promise<TwitchAddonSettings> => {
     showRewardRedemption: params.show_reward_redemption !== false,
     speakHighlightedMessages: params.speak_highlighted_messages === true,
     rewardLifecycle: resolveRewardLifecycle(params),
+    autoStartRewards: params.auto_start_rewards !== false,
     addRewardEmoji: params.add_reward_emoji !== false,
     randomRewardColor: params.random_reward_color === true,
     showFirstUserMessage: params.show_first_user_message !== false,
