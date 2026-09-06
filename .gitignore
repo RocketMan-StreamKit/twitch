@@ -25,3 +25,10 @@ Thumbs.db
 
 # Addon runtime storage (local dev only)
 storage_data.json
+
+# Graphify: commit graph.json, GRAPH_REPORT.md, graph.html, and .cursor/rules.
+# Machine-local state breaks after clone or is just a rebuild cache.
+graphify-out/manifest.json
+graphify-out/cost.json
+graphify-out/cache/
+graphify-out/.graphify_*
