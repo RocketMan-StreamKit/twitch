@@ -1097,5 +1097,11 @@ export const RegenerateConfig = () => {
       activeBotToken,
       botLogin
     );
+  }).catch(error => {
+    // An unhandled rejection here takes the whole worker down on startup.
+    console.error(
+      '[Twitch] RegenerateConfig failed:',
+      error instanceof Error ? (error.stack ?? error.message) : String(error)
+    );
   });
 };
