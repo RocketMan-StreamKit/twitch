@@ -85,11 +85,13 @@ const withoutEditor = (field: AddonConfigField): AddonConfigField => {
  * withoutEditors([{ key: 'debug', type: 'boolean', editor: { label: { en: 'Debug' } } }]);
  */
 const withoutEditors = (fields: AddonConfigSchema): AddonConfigSchema =>
-  fields.map(entry => {
+  fields.flatMap((entry): AddonConfigSchema => {
     if (Array.isArray(entry)) {
-      return entry.map(withoutEditor);
+      const row = entry.filter(field => field.type !== 'info');
+      return row.length ? [row.map(withoutEditor)] : [];
     }
-    return withoutEditor(entry);
+    // `info` stores nothing and is invalid without `editor`, so drop it.
+    return entry.type === 'info' ? [] : [withoutEditor(entry)];
   });
 
 /**
@@ -1021,7 +1023,30 @@ export const refreshManagedRewardsConfig = async () => {
   );
 };
 
+/** Delay before re-checking the token after Twitch could not be reached. */
+const AUTH_RETRY_DELAY_MS = 60_000;
+
+let authRetryTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Keeps the stored token and checks it again later, when Twitch was unreachable.
+ * @example
+ * scheduleAuthRetry();
+ */
+const scheduleAuthRetry = () => {
+  status.Update({ current: 'offline' });
+  authRetryTimer = setTimeout(() => {
+    authRetryTimer = null;
+    RegenerateConfig();
+  }, AUTH_RETRY_DELAY_MS);
+};
+
 export const RegenerateConfig = () => {
+  if (authRetryTimer) {
+    clearTimeout(authRetryTimer);
+    authRetryTimer = null;
+  }
+
   void api.config.getParams().then(async params => {
     const access_token = params.access_token;
     const bot_access_token =
@@ -1045,26 +1070,30 @@ export const RegenerateConfig = () => {
     if (bot_access_token) {
       const botValidation =
         await TwitchApi.fetchTokenValidation(bot_access_token);
-      if (botValidation.status !== 'valid') {
+      if (botValidation.status === 'invalid') {
         await patchParams({ bot_access_token: '' });
         TwitchApi.botAccessToken = null;
         activeBotToken = '';
-      } else {
+      } else if (botValidation.status === 'valid') {
         const botUser = await TwitchApi.GetMe(bot_access_token);
-        if (!botUser) {
-          await patchParams({ bot_access_token: '' });
-          TwitchApi.botAccessToken = null;
-          activeBotToken = '';
-        } else {
-          botLogin = botUser.login;
-        }
+        botLogin = botUser?.login;
       }
     }
 
     if (TwitchApi.accessToken) {
       const validation = await TwitchApi.fetchTokenValidation();
-      if (validation.status !== 'valid') {
+      if (validation.status === 'invalid') {
         await clearTwitchAuth();
+        return;
+      }
+      if (validation.status === 'unavailable') {
+        scheduleAuthRetry();
+        await applyConfigFields(
+          access_token,
+          undefined,
+          activeBotToken,
+          botLogin
+        );
         return;
       }
 
@@ -1076,7 +1105,13 @@ export const RegenerateConfig = () => {
 
       const user = await TwitchApi.GetMe();
       if (!user) {
-        await clearTwitchAuth();
+        scheduleAuthRetry();
+        await applyConfigFields(
+          access_token,
+          undefined,
+          activeBotToken,
+          botLogin
+        );
         return;
       }
 

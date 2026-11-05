@@ -88,6 +88,8 @@ export const TwitchApi = new (class {
 
   /**
    * Validates an OAuth token and returns granted scopes when the token is valid.
+   * `invalid` means Twitch rejected the token; `unavailable` means the check could
+   * not finish (network, proxy, Twitch outage), so the token must be kept.
    * @param accessToken Token to validate; defaults to the main account token.
    */
   async fetchTokenValidation(
@@ -95,6 +97,7 @@ export const TwitchApi = new (class {
   ): Promise<
     | { status: 'valid'; scopes: string[] }
     | { status: 'invalid'; message?: string }
+    | { status: 'unavailable'; message?: string }
   > {
     const token = accessToken ?? this.accessToken;
     if (!token) {
@@ -116,13 +119,19 @@ export const TwitchApi = new (class {
           'Twitch token validation failed:',
           data.message ?? response
         );
-        return { status: 'invalid', message: data.message ?? response };
+        return {
+          status: data.status === 401 ? 'invalid' : 'unavailable',
+          message: data.message ?? response,
+        };
       }
       return { status: 'valid', scopes: data.scopes ?? [] };
     } catch (error) {
-      console.error(error);
+      console.error(
+        'Twitch token validation unavailable:',
+        error instanceof Error ? error.message : String(error)
+      );
       return {
-        status: 'invalid',
+        status: 'unavailable',
         message: error instanceof Error ? error.message : String(error),
       };
     }
