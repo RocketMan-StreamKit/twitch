@@ -4,6 +4,8 @@ export type StoredRewardMeta = {
   title: string;
   /** Channel points cost. */
   cost: number;
+  /** When true, the reward asks the viewer for text. */
+  userInputRequired?: boolean;
 };
 
 type RewardMetaStorage = {
@@ -45,13 +47,15 @@ export const writeRewardMetaMap = (
  * @param rewardId Twitch reward id.
  * @param title Exact reward title on Twitch.
  * @param cost Channel points cost.
+ * @param userInputRequired Whether the reward asks the viewer for text.
  * @example
  * rememberRewardMeta('reward-id', '🔊 Alert', 500);
  */
 export const rememberRewardMeta = (
   rewardId: string,
   title: string,
-  cost: number
+  cost: number,
+  userInputRequired?: boolean
 ) => {
   const id = rewardId.trim();
   const trimmedTitle = title.trim().slice(0, 45);
@@ -60,7 +64,7 @@ export const rememberRewardMeta = (
   }
   const normalizedCost = Math.max(1, Math.floor(cost) || 1);
   const next = readRewardMetaMap();
-  next[id] = { title: trimmedTitle, cost: normalizedCost };
+  next[id] = { title: trimmedTitle, cost: normalizedCost, userInputRequired };
   writeRewardMetaMap(next);
 };
 
@@ -89,6 +93,7 @@ export const moveRewardMeta = (
   next[to] = {
     title: meta.title.trim().slice(0, 45),
     cost: Math.max(1, Math.floor(meta.cost) || 1),
+    userInputRequired: meta.userInputRequired,
   };
   writeRewardMetaMap(next);
 };

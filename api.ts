@@ -40,6 +40,8 @@ export type TwitchCustomReward = {
   is_enabled: boolean;
   /** When true, the reward is paused on Twitch and cannot be redeemed. */
   is_paused?: boolean;
+  /** When true, the viewer must enter text to redeem the reward. */
+  is_user_input_required?: boolean;
 };
 
 export type TwitchPinnedChatMessage = {
@@ -707,7 +709,7 @@ export const TwitchApi = new (class {
   async CreateCustomReward(
     title: string,
     cost = 1,
-    options?: { backgroundColor?: string }
+    options?: { backgroundColor?: string; userInputRequired?: boolean }
   ): Promise<{
     success: boolean;
     reward?: TwitchCustomReward;
@@ -739,7 +741,7 @@ export const TwitchApi = new (class {
       broadcaster_id: broadcaster.id,
       title: trimmedTitle,
       cost: Math.max(1, Math.floor(cost)),
-      is_user_input_required: false,
+      is_user_input_required: options?.userInputRequired === true,
       is_enabled: true,
     };
 
@@ -792,6 +794,7 @@ export const TwitchApi = new (class {
       cost?: number;
       is_enabled?: boolean;
       is_paused?: boolean;
+      is_user_input_required?: boolean;
     }
   ): Promise<{
     success: boolean;
@@ -817,6 +820,7 @@ export const TwitchApi = new (class {
       cost?: number;
       is_enabled?: boolean;
       is_paused?: boolean;
+      is_user_input_required?: boolean;
     } = {};
     if (typeof patch.cost === 'number' && Number.isFinite(patch.cost)) {
       body.cost = Math.max(1, Math.floor(patch.cost));
@@ -827,10 +831,14 @@ export const TwitchApi = new (class {
     if (typeof patch.is_paused === 'boolean') {
       body.is_paused = patch.is_paused;
     }
+    if (typeof patch.is_user_input_required === 'boolean') {
+      body.is_user_input_required = patch.is_user_input_required;
+    }
     if (
       body.cost === undefined &&
       body.is_enabled === undefined &&
-      body.is_paused === undefined
+      body.is_paused === undefined &&
+      body.is_user_input_required === undefined
     ) {
       return { success: false, message: 'No reward fields to update' };
     }
@@ -907,7 +915,7 @@ export const TwitchApi = new (class {
   async EnsureCustomReward(
     title: string,
     cost = 1,
-    options?: { backgroundColor?: string }
+    options?: { backgroundColor?: string; userInputRequired?: boolean }
   ): Promise<{
     success: boolean;
     reward?: TwitchCustomReward;
@@ -934,12 +942,16 @@ export const TwitchApi = new (class {
       return this.CreateCustomReward(trimmedTitle, normalizedCost, options);
     }
 
-    if (existing.cost === normalizedCost) {
+    const needsUserInput =
+      options?.userInputRequired === true &&
+      existing.is_user_input_required !== true;
+    if (existing.cost === normalizedCost && !needsUserInput) {
       return { success: true, reward: existing };
     }
 
     const updated = await this.UpdateCustomReward(existing.id, {
       cost: normalizedCost,
+      ...(needsUserInput ? { is_user_input_required: true } : {}),
     });
     if (updated.success && updated.reward) {
       return updated;

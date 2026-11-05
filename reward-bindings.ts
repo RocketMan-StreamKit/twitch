@@ -24,6 +24,7 @@ type TriggersAppliedSnapshotLike = {
   gameInput?: RedeemSourceRule[];
   sounds?: RedeemSourceRule[];
   hotkeys?: RedeemSourceRule[];
+  addon?: RedeemSourceRule[];
 };
 
 type TriggersCategoryMapLike = {
@@ -33,6 +34,7 @@ type TriggersCategoryMapLike = {
   gameInput?: Record<string, RedeemSourceRule[]>;
   sounds?: Record<string, RedeemSourceRule[]>;
   hotkeys?: Record<string, RedeemSourceRule[]>;
+  addon?: Record<string, RedeemSourceRule[]>;
 };
 
 /** Bound Twitch reward that StreamKit enables/disables automatically. */
@@ -157,6 +159,9 @@ export const collectManagedRewardBindingsFromSnapshot = (
   for (const rule of snapshot.hotkeys || []) {
     addManagedBinding(rule, into);
   }
+  for (const rule of snapshot.addon || []) {
+    addManagedBinding(rule, into);
+  }
   return [...into.values()];
 };
 
@@ -176,6 +181,7 @@ export const collectManagedRewardBindingsFromCategories = (
   ingestCategoryGroup(categories.gameInput, into, true);
   ingestCategoryGroup(categories.sounds, into);
   ingestCategoryGroup(categories.hotkeys, into);
+  ingestCategoryGroup(categories.addon, into);
   return [...into.values()];
 };
 

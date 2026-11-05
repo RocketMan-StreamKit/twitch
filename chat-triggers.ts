@@ -96,6 +96,7 @@ const collectChatTriggerRules = (
   readGroup(categories.game);
   readGroup(categories.sounds);
   readGroup(categories.hotkeys);
+  readGroup(categories.addon);
 
   return rules;
 };

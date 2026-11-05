@@ -68,7 +68,12 @@ events.On(`overlayTriggerValue:${PROVIDER}:list`, async () => {
   }
 
   for (const reward of result.rewards) {
-    rememberRewardMeta(reward.id, reward.title, reward.cost);
+    rememberRewardMeta(
+      reward.id,
+      reward.title,
+      reward.cost,
+      reward.is_user_input_required
+    );
   }
 
   return {
@@ -100,16 +105,20 @@ events.On(
       return { success: false, message: 'Reward cost must be at least 1' };
     }
 
+    const userInputRequired = payload?.context?.userInput === true;
+
     const existingValueId = payload?.valueId?.trim();
     if (existingValueId) {
       const updated = await TwitchApi.UpdateCustomReward(existingValueId, {
         cost,
+        ...(userInputRequired ? { is_user_input_required: true } : {}),
       });
       if (updated.success && updated.reward?.id) {
         rememberRewardMeta(
           updated.reward.id,
           updated.reward.title,
-          updated.reward.cost
+          updated.reward.cost,
+          updated.reward.is_user_input_required
         );
         return {
           success: true,
@@ -166,13 +175,12 @@ events.On(
       addEmoji: settings.addRewardEmoji,
     });
 
-    const ensured = await TwitchApi.EnsureCustomReward(
-      rewardTitle,
-      cost,
-      settings.randomRewardColor
-        ? { backgroundColor: randomRewardBackgroundColor() }
-        : undefined
-    );
+    const ensured = await TwitchApi.EnsureCustomReward(rewardTitle, cost, {
+      backgroundColor: settings.randomRewardColor
+        ? randomRewardBackgroundColor()
+        : undefined,
+      userInputRequired,
+    });
     if (!ensured.success || !ensured.reward?.id) {
       return {
         success: false,
@@ -183,7 +191,8 @@ events.On(
     rememberRewardMeta(
       ensured.reward.id,
       ensured.reward.title,
-      ensured.reward.cost
+      ensured.reward.cost,
+      ensured.reward.is_user_input_required
     );
 
     return {

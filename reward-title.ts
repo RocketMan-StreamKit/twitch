@@ -1,10 +1,11 @@
-export type RewardConsumer = 'sounds' | 'overlay' | 'hotkeys' | 'game';
+export type RewardConsumer = 'sounds' | 'overlay' | 'hotkeys' | 'game' | 'addon';
 
 const REWARD_EMOJI: Record<RewardConsumer, string> = {
   sounds: '🔊',
   overlay: '📺',
   hotkeys: '⌨️',
   game: '🎮',
+  addon: '🧩',
 };
 
 const REWARD_EMOJI_VALUES = Object.values(REWARD_EMOJI);

@@ -40,6 +40,7 @@ const resolveRecreateMeta = (
     return {
       title: stored.title.trim().slice(0, 45),
       cost: Math.max(1, Math.floor(stored.cost) || DEFAULT_REWARD_COST),
+      userInputRequired: stored.userInputRequired,
     };
   }
   if (binding.titleHint?.trim()) {
@@ -105,7 +106,12 @@ export const syncMissingChannelPointRewards = async (): Promise<
   }
 
   for (const reward of listed.rewards) {
-    rememberRewardMeta(reward.id, reward.title, reward.cost);
+    rememberRewardMeta(
+      reward.id,
+      reward.title,
+      reward.cost,
+      reward.is_user_input_required
+    );
   }
 
   const applied = await triggers.getApplied();
@@ -146,6 +152,7 @@ export const syncMissingChannelPointRewards = async (): Promise<
       moveRewardMeta(binding.rewardId, existingByTitle.id, {
         title: existingByTitle.title,
         cost: existingByTitle.cost,
+        userInputRequired: existingByTitle.is_user_input_required,
       });
       if (existingByTitle.id !== binding.rewardId) {
         replacements.push({ from: binding.rewardId, to: existingByTitle.id });
@@ -153,7 +160,9 @@ export const syncMissingChannelPointRewards = async (): Promise<
       continue;
     }
 
-    const created = await TwitchApi.CreateCustomReward(meta.title, meta.cost);
+    const created = await TwitchApi.CreateCustomReward(meta.title, meta.cost, {
+      userInputRequired: meta.userInputRequired,
+    });
     if (!created.success || !created.reward?.id) {
       console.error(
         'Failed to recreate missing Twitch reward:',
@@ -169,6 +178,7 @@ export const syncMissingChannelPointRewards = async (): Promise<
     moveRewardMeta(binding.rewardId, newId, {
       title: created.reward.title,
       cost: created.reward.cost,
+      userInputRequired: created.reward.is_user_input_required,
     });
 
     if (newId !== binding.rewardId) {

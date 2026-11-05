@@ -27,6 +27,7 @@ type DraftSnapshot = {
   game?: TriggerRuleLike[];
   sounds?: TriggerRuleLike[];
   hotkeys?: TriggerRuleLike[];
+  addon?: TriggerRuleLike[];
 };
 
 /**
@@ -69,6 +70,7 @@ events.On('triggers:validate', (payload: { draft?: DraftSnapshot } = {}) => {
     draft.game,
     draft.sounds,
     draft.hotkeys,
+    draft.addon,
   ];
 
   for (const group of groups) {
