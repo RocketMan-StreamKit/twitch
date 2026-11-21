@@ -18,6 +18,8 @@ Integration with Twitch API to display stream information, chat, viewer count in
 
 **Bot account:** optional second Twitch login for sending chat messages (`user:write:chat` only). Other addons' `sendChatMessage` uses the bot when configured, otherwise the main account. Dashboard `onChatSend` with `system: true` uses the bot when connected, otherwise (and for non-system messages, including the chat input) the main account. Authorization links for both accounts can be copied from settings.
 
+**Reserve login (second device):** the main and bot accounts can be authorized through a separate backup Twitch application. Twitch keeps only one session per account per application, so logging in with the same account on a second device through the main login signs out the first device. The addon remembers which login (main or reserve) issued each token and sends the matching `Client-ID` to Helix. Rewards created by one application can only be edited through that same application.
+
 **Install:** Settings → Addons → Install from folder (or drag-and-drop the folder/zip into the app window).
 
 ### For developers
@@ -108,6 +110,8 @@ Requires Twitch scopes `channel:read:polls` and `channel:read:predictions` (alre
 
 **Аккаунт бота:** опциональный второй вход в Twitch только для отправки сообщений в чат (`user:write:chat`). RPC `sendChatMessage` использует бота, если он настроен, иначе основную учётку. Dashboard `onChatSend` с `system: true` отправляет через бота, если он подключён; иначе (и для несистемных сообщений, включая поле ввода чата) — через основной аккаунт. Ссылки для авторизации обеих учёток можно скопировать в настройках.
 
+**Резервный вход (второе устройство):** основную учётку и учётку бота можно авторизовать через отдельное резервное приложение Twitch. Twitch держит только одну сессию учётки на одно приложение, поэтому вход под той же учёткой на втором устройстве через основной вход разлогинивает первое устройство. Аддон запоминает, через какой вход (основной или резервный) получен каждый токен, и отправляет соответствующий `Client-ID` в Helix. Награды, созданные одним приложением, редактируются только через это же приложение.
+
 **Установка:** Настройки → Аддоны → Установить из папки (или перетащите папку/zip в окно приложения).
 
 ### Для разработчиков
@@ -188,6 +192,8 @@ await addons.subscribe('twitch', 'predictionEnd', ({ data }) => {
 **RPC для аддонів:** інші аддони можуть використовувати OAuth і Helix API Twitch через `addons.request('twitch', …)` — `getScopes`, `addScopes`, `apiGet`, `apiPost`, `apiPut`, `apiPatch`, `apiDelete`, `getChannelId`, `sendChatMessage`. Якщо scope не вистачає, відкриється повторна авторизація в браузері, якщо користувач уже входив раніше.
 
 **Акаунт бота:** опціональний другий вхід у Twitch лише для надсилання повідомлень у чат (`user:write:chat`). RPC `sendChatMessage` використовує бота, якщо він налаштований, інакше основний акаунт. Dashboard `onChatSend` з `system: true` надсилає через бота, якщо він підключений; інакше (і для несистемних повідомлень, включно з полем вводу чату) — через основний акаунт. Посилання для авторизації обох акаунтів можна скопіювати в налаштуваннях.
+
+**Резервний вхід (другий пристрій):** основний акаунт і акаунт бота можна авторизувати через окремий резервний застосунок Twitch. Twitch тримає лише одну сесію акаунта на один застосунок, тому вхід під тим самим акаунтом на другому пристрої через основний вхід розлогінює перший пристрій. Аддон запам'ятовує, через який вхід (основний чи резервний) отримано кожен токен, і надсилає відповідний `Client-ID` у Helix. Нагороди, створені одним застосунком, редагуються лише через цей самий застосунок.
 
 **Встановлення:** Налаштування → Аддони → Встановити з папки (або перетягніть папку/zip у вікно програми).
 

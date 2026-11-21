@@ -1,4 +1,5 @@
 import { TwitchApi } from './api';
+import { parseAuthClient, type TwitchAuthClient } from './constants';
 import { patchParams } from './params';
 import {
   FOLLOW_MODE_NOTIFY_TEXT_PLACEHOLDER,
@@ -28,8 +29,9 @@ import {
 const clearTwitchAuth = async () => {
   await restoreFollowModeIfLifted();
   stopTwitchTracking();
-  await patchParams({ access_token: '' });
+  await patchParams({ access_token: '', auth_client: 'main' });
   TwitchApi.accessToken = null;
+  TwitchApi.authClient = 'main';
   RegenerateConfig();
 };
 
@@ -53,6 +55,80 @@ const formatBotDisconnectLabel = (login: string) => ({
   en: `Disconnect bot account (${login})`,
   ru: `Отключить аккаунт бота (${login})`,
   uk: `Відключити акаунт бота (${login})`,
+});
+
+/**
+ * Localized explanation of the reserve (second device) login, shown in both account spoilers.
+ */
+const RESERVE_LOGIN_DESCRIPTION = {
+  en: 'Use the reserve login on a second device (for example a second PC for the stream). Twitch keeps only one session per account for one application, so logging in with the same account on two devices through the main login signs out the first device. The reserve login uses a separate Twitch application, so both devices stay logged in. Rewards created by one application can only be edited through that same application.',
+  ru: 'Резервный вход нужен для второго устройства (например, второго ПК для стрима). Twitch хранит только одну сессию учётки для одного приложения, поэтому вход под той же учёткой на двух устройствах через основной вход разлогинивает первое устройство. Резервный вход использует отдельное приложение Twitch, и оба устройства остаются авторизованными. Награды, созданные одним приложением, редактируются только через это же приложение.',
+  uk: 'Резервний вхід потрібен для другого пристрою (наприклад, другого ПК для стріму). Twitch зберігає лише одну сесію акаунта для одного застосунку, тому вхід під тим самим акаунтом на двох пристроях через основний вхід розлогінює перший пристрій. Резервний вхід використовує окремий застосунок Twitch, і обидва пристрої залишаються авторизованими. Нагороди, створені одним застосунком, редагуються лише через цей самий застосунок.',
+};
+
+/**
+ * Builds the info block explaining what the reserve (second device) login is for.
+ * @param key Schema key of the info field.
+ * @example
+ * reserveLoginInfoField('reserve_login_info');
+ */
+const reserveLoginInfoField = (key: string): AddonConfigSchema[number] => ({
+  key,
+  type: 'info',
+  editor: {
+    label: {
+      en: 'Reserve login (second device)',
+      ru: 'Резервный вход (второе устройство)',
+      uk: 'Резервний вхід (другий пристрій)',
+    },
+    description: RESERVE_LOGIN_DESCRIPTION,
+    infoBorder: 'yellow',
+  },
+});
+
+/**
+ * Builds the localized info line that tells which login variant the current token used.
+ * @param client Auth client the stored token was issued for.
+ * @example
+ * formatAuthClientLabel('reserve');
+ * // { en: 'Logged in via reserve login (second device)', ... }
+ */
+const formatAuthClientLabel = (client: TwitchAuthClient) =>
+  client === 'reserve'
+    ? {
+        en: 'Logged in via reserve login (second device)',
+        ru: 'Вход выполнен через резервный вход (второе устройство)',
+        uk: 'Вхід виконано через резервний вхід (другий пристрій)',
+      }
+    : {
+        en: 'Logged in via main login',
+        ru: 'Вход выполнен через основной вход',
+        uk: 'Вхід виконано через основний вхід',
+      };
+
+/**
+ * Builds the info field showing which login variant is active for an account.
+ * @param key Schema key of the info field.
+ * @param client Auth client the stored token was issued for.
+ * @example
+ * authClientInfoField('auth_client_info', 'main');
+ */
+const authClientInfoField = (
+  key: string,
+  client: TwitchAuthClient
+): AddonConfigSchema[number] => ({
+  key,
+  type: 'info',
+  // `info` fields must have `editor.description` (host schema validation).
+  editor: {
+    label: {
+      en: 'Login variant',
+      ru: 'Вариант входа',
+      uk: 'Варіант входу',
+    },
+    description: formatAuthClientLabel(client),
+    infoBorder: client === 'reserve' ? 'yellow' : 'blue',
+  },
 });
 
 /**
@@ -839,6 +915,14 @@ const buildConfigFields = (
       ru: 'Ссылка для авторизации основной учётки',
       uk: 'Посилання для авторизації основного акаунта',
     }),
+    authUrlField('auth_url_reserve', {
+      en: 'Main account authorization link (reserve, second device)',
+      ru: 'Ссылка для авторизации основной учётки (резервная, второе устройство)',
+      uk: 'Посилання для авторизації основного акаунта (резервне, другий пристрій)',
+    }),
+    ...(access_token
+      ? [authClientInfoField('auth_client_info', TwitchApi.authClient)]
+      : []),
     access_token
       ? {
           type: 'button',
@@ -858,10 +942,27 @@ const buildConfigFields = (
             label: {
               en: 'Login via Twitch',
               ru: 'Войти через Twitch',
-              uk: 'Войти через Twitch',
+              uk: 'Увійти через Twitch',
             },
           },
         },
+    ...(access_token
+      ? []
+      : [
+          {
+            type: 'button',
+            key: 'login_reserve',
+            event: 'twitchLoginReserve',
+            editor: {
+              label: {
+                en: 'Login via Twitch (reserve, second device)',
+                ru: 'Войти через Twitch (резервный, второе устройство)',
+                uk: 'Увійти через Twitch (резервний, другий пристрій)',
+              },
+            },
+          } satisfies AddonConfigSchema[number],
+        ]),
+    reserveLoginInfoField('login_reserve_info'),
   ];
 
   const botAccountFields: AddonConfigSchema = [
@@ -870,6 +971,14 @@ const buildConfigFields = (
       ru: 'Ссылка для авторизации учётки бота',
       uk: 'Посилання для авторизації акаунта бота',
     }),
+    authUrlField('bot_auth_url_reserve', {
+      en: 'Bot account authorization link (reserve, second device)',
+      ru: 'Ссылка для авторизации учётки бота (резервная, второе устройство)',
+      uk: 'Посилання для авторизації акаунта бота (резервне, другий пристрій)',
+    }),
+    ...(bot_access_token
+      ? [authClientInfoField('bot_auth_client_info', TwitchApi.botAuthClient)]
+      : []),
     bot_access_token
       ? {
           type: 'button',
@@ -897,6 +1006,23 @@ const buildConfigFields = (
             },
           },
         },
+    ...(bot_access_token
+      ? []
+      : [
+          {
+            type: 'button',
+            key: 'bot_login_reserve',
+            event: 'twitchBotLoginReserve',
+            editor: {
+              label: {
+                en: 'Login bot via Twitch (reserve, second device)',
+                ru: 'Войти ботом через Twitch (резервный, второе устройство)',
+                uk: 'Увійти ботом через Twitch (резервний, другий пристрій)',
+              },
+            },
+          } satisfies AddonConfigSchema[number],
+        ]),
+    reserveLoginInfoField('bot_login_reserve_info'),
   ];
 
   return [
@@ -909,6 +1035,16 @@ const buildConfigFields = (
       key: 'bot_access_token',
       type: 'text',
       default: '',
+    },
+    {
+      key: 'auth_client',
+      type: 'text',
+      default: 'main',
+    },
+    {
+      key: 'bot_auth_client',
+      type: 'text',
+      default: 'main',
     },
     {
       key: 'last_update',
@@ -947,9 +1083,9 @@ const buildConfigFields = (
           uk: 'Акаунт бота',
         },
         description: {
-          en: 'Optional second login for sending chat messages',
-          ru: 'Опциональный второй вход для отправки сообщений в чат',
-          uk: 'Опційний другий вхід для надсилання повідомлень у чат',
+          en: 'Optional second login for sending chat messages. On a second device use the reserve login.',
+          ru: 'Опциональный второй вход для отправки сообщений в чат. На втором устройстве используйте резервный вход.',
+          uk: 'Опційний другий вхід для надсилання повідомлень у чат. На другому пристрої використовуйте резервний вхід.',
         },
       },
       items: botAccountFields,
@@ -1055,14 +1191,16 @@ export const RegenerateConfig = () => {
         : '';
     TwitchApi.accessToken = access_token;
     TwitchApi.botAccessToken = bot_access_token || null;
+    TwitchApi.authClient = parseAuthClient(params.auth_client);
+    TwitchApi.botAuthClient = parseAuthClient(params.bot_auth_client);
     await loadPersistedScopeRequests();
     setHadAuthorization(Boolean(access_token));
 
-    const authUrl = buildTwitchAuthorizationUrl();
-    const botAuthUrl = buildTwitchBotAuthorizationUrl();
     await patchParams({
-      auth_url: authUrl,
-      bot_auth_url: botAuthUrl,
+      auth_url: buildTwitchAuthorizationUrl('main'),
+      auth_url_reserve: buildTwitchAuthorizationUrl('reserve'),
+      bot_auth_url: buildTwitchBotAuthorizationUrl('main'),
+      bot_auth_url_reserve: buildTwitchBotAuthorizationUrl('reserve'),
     });
 
     let botLogin: string | undefined;
@@ -1071,8 +1209,9 @@ export const RegenerateConfig = () => {
       const botValidation =
         await TwitchApi.fetchTokenValidation(bot_access_token);
       if (botValidation.status === 'invalid') {
-        await patchParams({ bot_access_token: '' });
+        await patchParams({ bot_access_token: '', bot_auth_client: 'main' });
         TwitchApi.botAccessToken = null;
+        TwitchApi.botAuthClient = 'main';
         activeBotToken = '';
       } else if (botValidation.status === 'valid') {
         const botUser = await TwitchApi.GetMe(bot_access_token);

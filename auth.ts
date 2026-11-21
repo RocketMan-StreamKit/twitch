@@ -1,15 +1,18 @@
+import { TwitchApi } from './api';
 import { restoreFollowModeIfLifted } from './auto-follow-mode';
 import { RegenerateConfig } from './config';
 import { patchParams } from './params';
 import {
   openTwitchAuthorization,
   openTwitchBotAuthorization,
+  parseAuthState,
   setReauthorizationHandler,
 } from './scopes';
 import { stopTwitchTracking } from './tracking';
 
+// Re-authorize through the same application the current main token came from.
 setReauthorizationHandler(() => {
-  openTwitchAuthorization();
+  openTwitchAuthorization(TwitchApi.authClient);
 });
 
 const AUTH_SUCCESS_MESSAGE = {
@@ -22,19 +25,27 @@ events.On('twitchLogin', () => {
   openTwitchAuthorization();
 });
 
+events.On('twitchLoginReserve', () => {
+  openTwitchAuthorization('reserve');
+});
+
 events.On('twitchBotLogin', () => {
   openTwitchBotAuthorization();
+});
+
+events.On('twitchBotLoginReserve', () => {
+  openTwitchBotAuthorization('reserve');
 });
 
 events.On('twitchLogout', async () => {
   await restoreFollowModeIfLifted();
   stopTwitchTracking();
-  await patchParams({ access_token: '' });
+  await patchParams({ access_token: '', auth_client: 'main' });
   RegenerateConfig();
 });
 
 events.On('twitchBotLogout', async () => {
-  await patchParams({ bot_access_token: '' });
+  await patchParams({ bot_access_token: '', bot_auth_client: 'main' });
   RegenerateConfig();
 });
 
@@ -65,10 +76,17 @@ events.On('authCallback', ({ query }) => {
       : Array.isArray(query.state)
         ? String(query.state[0] ?? '')
         : '';
-  const isBotAuth = state === 'bot';
+  // Remember which application (main / reserve) issued the token so Helix calls
+  // send the matching Client-ID.
+  const { account, client } = parseAuthState(state);
+  const isBotAuth = account === 'bot';
   const tokenKey = isBotAuth ? 'bot_access_token' : 'access_token';
+  const clientKey = isBotAuth ? 'bot_auth_client' : 'auth_client';
 
-  void patchParams({ [tokenKey]: query.access_token }).then(() => {
+  void patchParams({
+    [tokenKey]: query.access_token,
+    [clientKey]: client,
+  }).then(() => {
     RegenerateConfig();
   });
 

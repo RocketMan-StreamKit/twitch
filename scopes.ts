@@ -1,4 +1,4 @@
-import { CLIENT_ID } from './constants';
+import { getClientId, type TwitchAuthClient } from './constants';
 import { patchParams } from './params';
 
 /** Scopes required by the Twitch addon itself (EventSub, IRC chat, rewards). */
@@ -166,45 +166,103 @@ export const requestReauthorizationIfNeeded = (
 };
 
 /**
- * Builds the implicit-grant Twitch OAuth URL for the main account.
+ * OAuth `state` values that tell the auth callback which account and application
+ * the returned token belongs to.
  */
-export const buildTwitchAuthorizationUrl = (): string => {
-  const baseUrl =
-    'https://id.twitch.tv/oauth2/authorize' +
-    `?client_id=${CLIENT_ID}` +
-    '&redirect_uri=http://localhost:3000/addon/twitch/auth' +
-    '&response_type=token' +
-    '&state=main' +
-    `&scope=${encodeURIComponent(getRequiredScopes().join(' '))}`;
-  return baseUrl;
+export const AUTH_STATES = {
+  main: { main: 'main', reserve: 'main_reserve' },
+  bot: { main: 'bot', reserve: 'bot_reserve' },
+} as const;
+
+/**
+ * Parses the OAuth `state` returned to the auth callback.
+ * Unknown / empty state is treated as the main account via the main application.
+ * @param state Raw `state` query value.
+ * @example
+ * parseAuthState('bot_reserve'); // { account: 'bot', client: 'reserve' }
+ */
+export const parseAuthState = (
+  state: string
+): { account: 'main' | 'bot'; client: TwitchAuthClient } => {
+  const account = state === 'bot' || state.startsWith('bot_') ? 'bot' : 'main';
+  const client: TwitchAuthClient = state.endsWith('_reserve')
+    ? 'reserve'
+    : 'main';
+  return { account, client };
 };
+
+/**
+ * Builds an implicit-grant Twitch OAuth URL.
+ * @param clientId Twitch application client id.
+ * @param state OAuth state echoed back to the auth callback.
+ * @param scopes Requested OAuth scopes.
+ * @example
+ * buildAuthorizationUrl(getClientId('main'), 'main', ['user:read:chat']);
+ */
+const buildAuthorizationUrl = (
+  clientId: string,
+  state: string,
+  scopes: readonly string[]
+): string =>
+  'https://id.twitch.tv/oauth2/authorize' +
+  `?client_id=${clientId}` +
+  '&redirect_uri=http://localhost:3000/addon/twitch/auth' +
+  '&response_type=token' +
+  `&state=${state}` +
+  `&scope=${encodeURIComponent(scopes.join(' '))}`;
+
+/**
+ * Builds the implicit-grant Twitch OAuth URL for the main account.
+ * @param client `main` for the primary application, `reserve` for a second device.
+ * @example
+ * buildTwitchAuthorizationUrl('reserve');
+ */
+export const buildTwitchAuthorizationUrl = (
+  client: TwitchAuthClient = 'main'
+): string =>
+  buildAuthorizationUrl(
+    getClientId(client),
+    AUTH_STATES.main[client],
+    getRequiredScopes()
+  );
 
 /**
  * Builds the implicit-grant Twitch OAuth URL for the optional bot account.
+ * @param client `main` for the primary application, `reserve` for a second device.
+ * @example
+ * buildTwitchBotAuthorizationUrl('main');
  */
-export const buildTwitchBotAuthorizationUrl = (): string => {
-  const baseUrl =
-    'https://id.twitch.tv/oauth2/authorize' +
-    `?client_id=${CLIENT_ID}` +
-    '&redirect_uri=http://localhost:3000/addon/twitch/auth' +
-    '&response_type=token' +
-    '&state=bot' +
-    `&scope=${encodeURIComponent(BOT_SCOPES.join(' '))}`;
-  return baseUrl;
-};
+export const buildTwitchBotAuthorizationUrl = (
+  client: TwitchAuthClient = 'main'
+): string =>
+  buildAuthorizationUrl(
+    getClientId(client),
+    AUTH_STATES.bot[client],
+    BOT_SCOPES
+  );
 
 /**
  * Opens Twitch OAuth in the system browser for the main account.
+ * @param client `main` for the primary application, `reserve` for a second device.
+ * @example
+ * openTwitchAuthorization('reserve');
  */
-export const openTwitchAuthorization = (): void => {
-  api.openUrl(buildTwitchAuthorizationUrl());
+export const openTwitchAuthorization = (
+  client: TwitchAuthClient = 'main'
+): void => {
+  api.openUrl(buildTwitchAuthorizationUrl(client));
 };
 
 /**
  * Opens Twitch OAuth in the system browser for the bot account.
+ * @param client `main` for the primary application, `reserve` for a second device.
+ * @example
+ * openTwitchBotAuthorization('main');
  */
-export const openTwitchBotAuthorization = (): void => {
-  api.openUrl(buildTwitchBotAuthorizationUrl());
+export const openTwitchBotAuthorization = (
+  client: TwitchAuthClient = 'main'
+): void => {
+  api.openUrl(buildTwitchBotAuthorizationUrl(client));
 };
 
 /**

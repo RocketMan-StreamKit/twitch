@@ -1,4 +1,8 @@
-import { CLIENT_ID, TWITCH_API_HOSTS } from './constants';
+import {
+  getClientId,
+  TWITCH_API_HOSTS,
+  type TwitchAuthClient,
+} from './constants';
 import { EVENTSUB_TYPES } from './constants';
 
 export type TwitchBroadcaster = {
@@ -72,8 +76,27 @@ export type TwitchChatSettings = {
 export const TwitchApi = new (class {
   accessToken: string | null = null;
   botAccessToken: string | null = null;
+  /** Twitch application (main / reserve) the main account token was issued for. */
+  authClient: TwitchAuthClient = 'main';
+  /** Twitch application (main / reserve) the bot account token was issued for. */
+  botAuthClient: TwitchAuthClient = 'main';
   /** Helix `/users` result keyed by the OAuth token that fetched it. */
   private meByToken = new Map<string, TwitchBroadcaster>();
+
+  /**
+   * Returns the Twitch application client id a token was issued for.
+   * Helix rejects a token sent with a different `Client-ID`, so the bot token uses
+   * the bot's auth client and every other token uses the main account's auth client.
+   * @param token OAuth access token sent with the request.
+   * @example
+   * const clientId = TwitchApi.clientIdForToken(TwitchApi.botAccessToken);
+   */
+  clientIdForToken(token?: string | null): string {
+    if (token && this.botAccessToken && token === this.botAccessToken) {
+      return getClientId(this.botAuthClient);
+    }
+    return getClientId(this.authClient);
+  }
 
   /**
    * Builds Helix request headers for the given OAuth access token.
@@ -83,7 +106,7 @@ export const TwitchApi = new (class {
     const token = accessToken ?? this.accessToken;
     return {
       Authorization: `Bearer ${token}`,
-      'Client-ID': CLIENT_ID,
+      'Client-ID': this.clientIdForToken(token),
       'Content-Type': 'application/json',
     };
   }
@@ -263,7 +286,7 @@ export const TwitchApi = new (class {
         `https://api.twitch.tv/helix/users?id=${encodeURIComponent(userId)}`,
         {
           Authorization: `Bearer ${accessToken}`,
-          'Client-ID': CLIENT_ID,
+          'Client-ID': this.clientIdForToken(accessToken),
         }
       );
       const data = JSON.parse(response) as {
@@ -352,7 +375,7 @@ export const TwitchApi = new (class {
         )}`,
         {
           Authorization: `Bearer ${accessToken}`,
-          'Client-ID': CLIENT_ID,
+          'Client-ID': this.clientIdForToken(accessToken),
         }
       );
       const parsed = this.parseHelixBody<{
@@ -403,7 +426,7 @@ export const TwitchApi = new (class {
         'https://api.twitch.tv/helix/users',
         {
           Authorization: `Bearer ${token}`,
-          'Client-ID': CLIENT_ID,
+          'Client-ID': this.clientIdForToken(token),
         }
       );
       const parsed = this.parseHelixBody<{
@@ -1495,7 +1518,7 @@ export const TwitchApi = new (class {
           `https://api.twitch.tv/helix/eventsub/subscriptions${query}`,
           {
             Authorization: `Bearer ${this.accessToken}`,
-            'Client-ID': CLIENT_ID,
+            'Client-ID': this.clientIdForToken(this.accessToken),
           }
         );
       } catch (error) {
